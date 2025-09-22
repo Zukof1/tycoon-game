@@ -1,4 +1,4 @@
-// DOM Elements
+// --- DOM Elements ---
 const DOM = {
     header: {
         title: document.getElementById('header-title'),
@@ -13,8 +13,10 @@ const DOM = {
         casinoHub: document.getElementById('page-casino-hub'),
         casinoRoulette: document.getElementById('page-casino-roulette'),
         casinoBlackjack: document.getElementById('page-casino-blackjack'),
+        casinoSlots: document.getElementById('page-casino-slots'),
         prestige: document.getElementById('page-prestige'),
         bank: document.getElementById('page-bank'),
+        profile: document.getElementById('page-profile'),
     },
     dashboard: {
         tapButton: document.getElementById('tap-button'),
@@ -26,7 +28,6 @@ const DOM = {
         startLogisticsButton: document.getElementById('start-logistics-business'),
         startTechStartupButton: document.getElementById('start-tech-startup-business'),
         tapFeedbackContainer: document.getElementById('tap-feedback-container'),
-        newsTickerContent: document.getElementById('news-ticker-content'),
     },
     businessDetails: {
         name: document.getElementById('business-details-name'),
@@ -48,7 +49,7 @@ const DOM = {
         betGreenBtn: document.getElementById('bet-green-btn'),
         betBlackBtn: document.getElementById('bet-black-btn'),
     },
-     casinoBlackjack: {
+    casinoBlackjack: {
         dealerScore: document.getElementById('blackjack-dealer-score'),
         dealerHand: document.getElementById('blackjack-dealer-hand'),
         status: document.getElementById('blackjack-status'),
@@ -61,6 +62,11 @@ const DOM = {
         hitBtn: document.getElementById('blackjack-hit-btn'),
         standBtn: document.getElementById('blackjack-stand-btn'),
         newHandBtn: document.getElementById('blackjack-new-hand-btn'),
+    },
+    casinoSlots: {
+        reels: [document.getElementById('slot-reel-1'), document.getElementById('slot-reel-2'), document.getElementById('slot-reel-3')],
+        betInput: document.getElementById('slots-bet-input'),
+        spinBtn: document.getElementById('slots-spin-btn'),
     },
     prestige: {
         currentLp: document.getElementById('prestige-current-lp'),
@@ -79,9 +85,17 @@ const DOM = {
         depositBtn: document.getElementById('bank-deposit-btn'),
         withdrawBtn: document.getElementById('bank-withdraw-btn'),
         debtBalance: document.getElementById('bank-debt-balance'),
+        creditLimit: document.getElementById('bank-credit-limit'),
+        loanAmountInput: document.getElementById('loan-amount-input'),
         repayInput: document.getElementById('loan-repay-input'),
         repayBtn: document.getElementById('loan-repay-btn'),
         takeLoanBtn: document.getElementById('take-loan-btn'),
+    },
+    profile: {
+        netWorth: document.getElementById('profile-net-worth'),
+        totalEarnings: document.getElementById('profile-total-earnings'),
+        totalTaps: document.getElementById('profile-total-taps'),
+        timePlayed: document.getElementById('profile-time-played'),
     },
     nav: {
         main: document.getElementById('main-nav'),
@@ -103,6 +117,7 @@ const DOM = {
     toastContainer: document.getElementById('toast-container'),
 };
 
+// --- Game Config & State ---
 const PRESTIGE_REQUIREMENTS = {
     NET_WORTH: 1_000_000_000,
     YACHT_COST: 500_000_000,
@@ -110,17 +125,17 @@ const PRESTIGE_REQUIREMENTS = {
 
 const BANK_SETTINGS = {
     SAVINGS_APR: 0.03,
-    LOAN_AMOUNT: 100000,
-    LOAN_APR: 0.10
+    LOAN_APR: 0.10,
+    CREDIT_LIMIT_MULTIPLIER: 0.2, // Can borrow up to 20% of net worth
 };
 
 const BUSINESS_TYPES = {
     TAXI: { 
         id: 'TAXI', name: 'Taxi Company', unlockCost: 500, 
         assetTypes: [
-            { id: 'SEDAN', name: 'Used Sedan', cost: 1500, incomePerSecond: 0.25, mileagePerSecond: 0.083, maxOdometer: 150000, imageUrl: 'https://images.pexels.com/photos/112460/pexels-photo-112460.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
-            { id: 'SUV', name: 'Luxury SUV', cost: 8000, incomePerSecond: 1.10, mileagePerSecond: 0.1, maxOdometer: 250000, imageUrl: 'https://images.pexels.com/photos/3764984/pexels-photo-3764984.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' },
-            { id: 'EV', name: 'Electric Car', cost: 15000, incomePerSecond: 2.50, mileagePerSecond: 0.05, maxOdometer: 400000, imageUrl: 'https://images.pexels.com/photos/3137052/pexels-photo-3137052.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1' }
+            { id: 'SEDAN', name: 'Used Sedan', cost: 1500, incomePerSecond: 0.25, mileagePerSecond: 0.083, maxOdometer: 150000, imageUrl: 'https://placehold.co/100x60/34d399/ffffff?text=Sedan' },
+            { id: 'SUV', name: 'Luxury SUV', cost: 8000, incomePerSecond: 1.10, mileagePerSecond: 0.1, maxOdometer: 250000, imageUrl: 'https://placehold.co/100x60/10b981/ffffff?text=SUV' },
+            { id: 'EV', name: 'Electric Car', cost: 15000, incomePerSecond: 2.50, mileagePerSecond: 0.05, maxOdometer: 400000, imageUrl: 'https://placehold.co/100x60/059669/ffffff?text=EV' }
         ]
     },
     REAL_ESTATE: { 
@@ -154,6 +169,11 @@ const initialGameState = {
     hasYacht: false,
     savingsBalance: 0,
     loan: { principal: 0, remaining: 0 },
+    stats: {
+        totalEarnings: 0,
+        totalTaps: 0,
+        timePlayed: 0,
+    }
 };
 
 let gameState = {
@@ -163,6 +183,8 @@ let gameState = {
     currentPage: 'dashboard',
     currentBusinessView: null,
 };
+
+let businessToStart = { type: null }; // Context for the business name modal
 
 let marketData = {
     'GEC': { name: 'Global Energy Co.', price: 150.75, history: [150.75] },
@@ -177,6 +199,21 @@ let rouletteState = {
 };
 
 let blackjackState = {};
+let slotState = {
+    isSpinning: false,
+    reels: [
+        ['💎', '💰', '💵', '🔔', '🍒', '💰', '🍒', '🔔', '💵', '🍒'],
+        ['💰', '🔔', '💎', '🍒', '💵', '💰', '🍒', '💵', '🔔', '🍒'],
+        ['💵', '🍒', '💰', '🔔', '💎', '🍒', '💰', '🔔', '💵', '🍒']
+    ],
+    payouts: {
+        '💎💎💎': 50,
+        '💰💰💰': 20,
+        '🔔🔔🔔': 10,
+        '🍒🍒': 2,
+        '🍒': 1,
+    }
+};
 
 // --- Gemini API Call ---
 async function callGemini(prompt, isJson = false) {
@@ -207,9 +244,14 @@ async function callGemini(prompt, isJson = false) {
     }
 }
 
-// --- UI & Navigation ---
+// --- All Functions ---
+
+// Helper & UI
+function formatCurrency(amount, fractions = 2) { return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: fractions, maximumFractionDigits: fractions }); }
+function formatNumber(num) { return num.toLocaleString('en-US'); }
+
 function navigateTo(pageId, context = null) {
-     const camelCasePageId = pageId.replace(/-([a-z])/g, g => g[1].toUpperCase());
+    const camelCasePageId = pageId.replace(/-([a-z])/g, g => g[1].toUpperCase());
     
     Object.values(DOM.pages).forEach(p => {
         if(p) p.classList.add('page-hidden');
@@ -241,41 +283,39 @@ function navigateTo(pageId, context = null) {
 function showToast(message, type = 'info') {
     const color = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
     const toast = document.createElement('div');
-    toast.className = `toast ${color} text-white font-bold py-2 px-4 rounded-lg shadow-lg`;
+    toast.className = `toast ${color} text-white font-bold py-2 px-4 rounded-lg shadow-lg mb-2`;
     toast.textContent = message;
     DOM.toastContainer.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
 }
 
-// --- Game Logic ---
-function formatCurrency(amount, fractions = 2) { return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: fractions, maximumFractionDigits: fractions }); }
-function formatNumber(num) { return num.toLocaleString('en-US'); }
-
-function showFloatingText(text, x, y) {
+function showFloatingText(text, event) {
+    const rect = DOM.dashboard.tapButton.getBoundingClientRect();
     const el = document.createElement('div');
     el.textContent = text;
-    el.className = 'absolute font-bold text-blue-300 text-2xl animate-ping-fade-out';
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
+    el.className = 'absolute font-bold text-blue-300 text-2xl animate-ping-fade-out pointer-events-none';
+    // Position relative to the game container, not the viewport
+    el.style.left = `${event.clientX - rect.left}px`;
+    el.style.top = `${event.clientY - rect.top}px`;
     DOM.dashboard.tapFeedbackContainer.appendChild(el);
-    const style = document.createElement('style');
-    style.innerHTML = `@keyframes ping-fade-out { 0% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -150%) scale(1.5); opacity: 0; } } .animate-ping-fade-out { animation: ping-fade-out 1s ease-out forwards; }`;
-    document.head.appendChild(style);
-    setTimeout(() => { el.remove(); style.remove(); }, 1000);
+    setTimeout(() => { el.remove(); }, 1000);
 }
 
+// Game Logic
 function handleTap(event) {
-    gameState.balance += gameState.tapPower;
+    const prestigeMultiplier = 1 + (gameState.legacyPoints * 0.02);
+    const tapValue = gameState.tapPower * prestigeMultiplier;
+    gameState.balance += tapValue;
+    gameState.stats.totalEarnings += tapValue;
+    gameState.stats.totalTaps++;
     updateBalanceDisplay();
-    const clientX = event.clientX || (event.touches && event.touches[0].clientX);
-    const clientY = event.clientY || (event.touches && event.touches[0].clientY);
-    showFloatingText(`+${formatCurrency(gameState.tapPower)}`, clientX, clientY);
+    showFloatingText(`+${formatCurrency(tapValue)}`, event);
 }
 
 function upgradeTap() {
     if (gameState.balance >= gameState.tapUpgradeCost) {
         gameState.balance -= gameState.tapUpgradeCost;
-        gameState.tapPower += 1;
+        gameState.tapPower += 1 + Math.floor(gameState.tapPower * 0.1); // Increase by 1 + 10%
         gameState.tapUpgradeCost *= 1.5;
         renderUI();
     }
@@ -284,36 +324,28 @@ function upgradeTap() {
 function startBusiness(businessType) {
     const typeInfo = BUSINESS_TYPES[businessType];
     if (gameState.balance >= typeInfo.unlockCost) {
+        businessToStart.type = businessType; // Set context for the modal confirm button
         DOM.modals.businessName.classList.remove('hidden');
         DOM.modals.businessNameInput.value = '';
         DOM.modals.businessNameInput.focus();
         DOM.modals.businessNamePrompt.textContent = `Give your new ${typeInfo.name} a name!`;
-
-        const confirmHandler = () => {
-            const businessName = DOM.modals.businessNameInput.value.trim() || `My ${typeInfo.name}`;
-            gameState.balance -= typeInfo.unlockCost;
-            gameState.businesses.push({ id: Date.now(), type: businessType, customName: businessName, assets: [], boost: null });
-            DOM.modals.businessName.classList.add('hidden');
-            DOM.modals.confirmBusinessName.removeEventListener('click', confirmHandler);
-            renderUI();
-        };
-         DOM.modals.confirmBusinessName.addEventListener('click', confirmHandler, { once: true });
     }
 }
 
 async function suggestBusinessName() {
+    if (!businessToStart.type) return;
     const btn = DOM.modals.suggestNameButton;
     const input = DOM.modals.businessNameInput;
     btn.disabled = true;
     input.value = "Generating...";
     
-    const prompt = "Suggest a cool and creative name for a new Taxi Company in a business tycoon game. The name should be short and catchy. Just return the name, nothing else.";
+    const prompt = `Suggest a cool and creative name for a new ${BUSINESS_TYPES[businessToStart.type].name} in a business tycoon game. The name should be short and catchy. Just return the name, nothing else.`;
     const suggestedName = await callGemini(prompt);
 
     if (suggestedName) {
         input.value = suggestedName.replace(/"/g, '').trim();
     } else {
-        input.value = "Apex Cabs"; // Fallback
+        input.value = "Apex Ventures"; // Fallback
     }
     btn.disabled = false;
 }
@@ -323,9 +355,9 @@ async function getBusinessIntel() {
     if (!business) return;
 
     DOM.modals.intel.classList.remove('hidden');
-    DOM.modals.intelContent.innerHTML = '<div class="spinner"></div><p class="mt-4 text-gray-300">Analyzing Market Data...</p>';
+    DOM.modals.intelContent.innerHTML = '<div class="spinner mx-auto"></div><p class="mt-4 text-gray-300">Analyzing Market Data...</p>';
 
-    const prompt = `Generate a fictional business opportunity for a company named "${business.customName}" which is a ${business.type.toLowerCase()} business in a tycoon game. The response must be a JSON object with keys: "title" (string), "description" (string), and "options" (an array of two objects, each with "text" (string), "effect" (one of 'cash_gain', 'cash_loss', 'income_boost'), and "value" (a number)). For income_boost, value should be a multiplier like 1.5 or 2. For cash effects, value should be a monetary amount.`;
+    const prompt = `Generate a fictional business opportunity for a company named "${business.customName}" which is a ${BUSINESS_TYPES[business.type].name.toLowerCase()} business in a tycoon game. The response must be a JSON object with keys: "title" (string), "description" (string), and "options" (an array of two objects, each with "text" (string), "effect" (one of 'cash_gain', 'cash_loss', 'income_boost'), and "value" (a number)). For income_boost, value should be a multiplier like 1.5 or 2. For cash effects, value should be a monetary amount.`;
     
     const resultText = await callGemini(prompt, true);
     
@@ -363,6 +395,7 @@ function applyIntelEffect(effect, value, businessId) {
     switch(effect) {
         case 'cash_gain':
             gameState.balance += value;
+            gameState.stats.totalEarnings += value;
             showToast(`You gained ${formatCurrency(value)}!`, 'success');
             break;
         case 'cash_loss':
@@ -378,19 +411,6 @@ function applyIntelEffect(effect, value, businessId) {
     renderUI();
 }
 
-async function fetchNews() {
-    const prompt = "Generate 5 short, punchy, fictional news headlines for a business tycoon game. One headline should be about the taxi industry. Return a JSON array of strings.";
-    const resultText = await callGemini(prompt, true);
-    if(resultText) {
-        try {
-            gameState.newsHeadlines = JSON.parse(resultText);
-            updateNewsTicker();
-        } catch (e) {
-            console.error("Could not parse news headlines");
-        }
-    }
-}
-
 function buyAsset(businessId, assetTypeId) {
     const business = gameState.businesses.find(b => b.id === businessId);
     if (!business) return;
@@ -402,6 +422,7 @@ function buyAsset(businessId, assetTypeId) {
         gameState.balance -= assetType.cost;
         business.assets.push({ id: Date.now() + Math.random(), assetTypeId: assetTypeId, odometer: 0 });
         showToast(`Purchased ${assetType.name}!`, 'success');
+        openAssetStoreModal(); // Refresh modal
         renderUI();
     } else {
         showToast('Not enough cash!', 'error');
@@ -426,6 +447,7 @@ function replaceAsset(businessId, assetId) {
     }
 }
 
+// Market
 function fluctuateStocks() {
     for (const ticker in marketData) {
         const stock = marketData[ticker];
@@ -437,9 +459,13 @@ function fluctuateStocks() {
         stock.history.push(stock.price);
         if (stock.history.length > 2) stock.history.shift();
     }
+    if (gameState.currentPage === 'market') {
+        renderMarket();
+    }
 }
 
 function buyStock(ticker, amount) {
+    if (isNaN(amount) || amount <= 0) return;
     const price = marketData[ticker].price * amount;
     if (gameState.balance >= price) {
         gameState.balance -= price;
@@ -450,20 +476,22 @@ function buyStock(ticker, amount) {
 }
 
 function sellStock(ticker, amount) {
+    if (isNaN(amount) || amount <= 0) return;
     const sharesOwned = gameState.portfolio[ticker] || 0;
     const amountToSell = Math.min(sharesOwned, amount);
 
     if (amountToSell > 0) {
         const price = marketData[ticker].price * amountToSell;
         gameState.balance += price;
+        gameState.stats.totalEarnings += price; // Selling stock counts as earnings
         gameState.portfolio[ticker] -= amountToSell;
-        if (gameState.portfolio[ticker] === 0) delete gameState.portfolio[ticker];
+        if (gameState.portfolio[ticker] <= 0) delete gameState.portfolio[ticker];
         showToast(`Sold ${amountToSell} ${ticker} shares`, 'info');
         renderUI();
     }
 }
 
-// --- Roulette Logic ---
+// Casino: Roulette
 function generateRouletteSequence() {
     const sequence = [];
     for (let i = 0; i < 100; i++) {
@@ -530,6 +558,7 @@ function spinRoulette(betColor) {
             }
             winnings = betAmount * payout;
             gameState.balance += winnings;
+            gameState.stats.totalEarnings += winnings;
             showToast(`You won ${formatCurrency(winnings)} on ${winningColor}!`, 'success');
         } else {
             showToast(`You lost. The color was ${winningColor}.`, 'error');
@@ -543,7 +572,16 @@ function spinRoulette(betColor) {
     }, 4100);
 }
 
-// --- Blackjack Logic ---
+// Casino: Blackjack
+function updateBlackjackControls() {
+    const hasDeck = !!blackjackState.deck;
+    const isGameOver = blackjackState.gameOver;
+
+    DOM.casinoBlackjack.bettingControls.classList.toggle('hidden', hasDeck);
+    DOM.casinoBlackjack.gameControls.classList.toggle('hidden', !hasDeck || isGameOver);
+    DOM.casinoBlackjack.newHandBtn.classList.toggle('hidden', !isGameOver);
+}
+
 function createDeck() {
     const suits = ['♥', '♦', '♣', '♠'];
     const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -556,9 +594,9 @@ function createDeck() {
     return deck.sort(() => Math.random() - 0.5);
 }
 
-function getCardValue(card, currentScore) {
+function getCardValue(card) {
     if (['J', 'Q', 'K'].includes(card.value)) return 10;
-    if (card.value === 'A') return currentScore + 11 > 21 ? 1 : 11;
+    if (card.value === 'A') return 11;
     return parseInt(card.value);
 }
 
@@ -566,12 +604,8 @@ function calculateScore(hand) {
     let score = 0;
     let aces = 0;
     hand.forEach(card => {
-        if (card.value === 'A') {
-            aces++;
-            score += 11;
-        } else {
-            score += getCardValue(card, score);
-        }
+        score += getCardValue(card);
+        if (card.value === 'A') aces++;
     });
     while (score > 21 && aces > 0) {
         score -= 10;
@@ -582,14 +616,8 @@ function calculateScore(hand) {
 
 function startBlackjack() {
     const betAmount = Number(DOM.casinoBlackjack.betInput.value);
-    if (isNaN(betAmount) || betAmount <= 0) {
-        showToast("Please enter a valid bet amount.", "error");
-        return;
-    }
-    if (gameState.balance < betAmount) {
-        showToast("Not enough cash to place that bet.", "error");
-        return;
-    }
+    if (isNaN(betAmount) || betAmount <= 0) { showToast("Please enter a valid bet amount.", "error"); return; }
+    if (gameState.balance < betAmount) { showToast("Not enough cash to place that bet.", "error"); return; }
 
     gameState.balance -= betAmount;
     
@@ -597,8 +625,6 @@ function startBlackjack() {
         deck: createDeck(),
         playerHand: [],
         dealerHand: [],
-        playerScore: 0,
-        dealerScore: 0,
         bet: betAmount,
         gameOver: false,
         status: 'Your Turn',
@@ -610,30 +636,22 @@ function startBlackjack() {
     blackjackState.playerHand.push(blackjackState.deck.pop());
     blackjackState.dealerHand.push(blackjackState.deck.pop());
     
-    blackjackState.playerScore = calculateScore(blackjackState.playerHand);
-    blackjackState.dealerScore = calculateScore(blackjackState.dealerHand);
-
-    DOM.casinoBlackjack.bettingControls.classList.add('hidden');
-    DOM.casinoBlackjack.gameControls.classList.remove('hidden');
-    DOM.casinoBlackjack.newHandBtn.classList.add('hidden');
-
-    if (blackjackState.playerScore === 21) {
+    if (calculateScore(blackjackState.playerHand) === 21) {
         blackjackState.status = 'Blackjack!';
-        endBlackjackHand(true); // Player Blackjack
+        endBlackjackHand(true); 
     }
-
     renderUI();
 }
 
 function blackjackHit() {
     if (blackjackState.gameOver) return;
     blackjackState.playerHand.push(blackjackState.deck.pop());
-    blackjackState.playerScore = calculateScore(blackjackState.playerHand);
-    renderUI();
-    if (blackjackState.playerScore > 21) {
+    
+    if (calculateScore(blackjackState.playerHand) > 21) {
         blackjackState.status = 'Bust!';
         endBlackjackHand();
     }
+    renderUI();
 }
 
 function blackjackStand() {
@@ -642,10 +660,8 @@ function blackjackStand() {
 }
 
 function dealerPlay() {
-    blackjackState.dealerScore = calculateScore(blackjackState.dealerHand);
-    while (blackjackState.dealerScore < 17) {
+    while (calculateScore(blackjackState.dealerHand) < 17) {
         blackjackState.dealerHand.push(blackjackState.deck.pop());
-        blackjackState.dealerScore = calculateScore(blackjackState.dealerHand);
     }
     endBlackjackHand();
 }
@@ -654,21 +670,22 @@ function endBlackjackHand(isPlayerBlackjack = false) {
     blackjackState.gameOver = true;
     let playerWon = false;
     let isPush = false;
+    const playerScore = calculateScore(blackjackState.playerHand);
     const dealerScore = calculateScore(blackjackState.dealerHand);
 
     if (isPlayerBlackjack) {
         playerWon = true;
         blackjackState.status = "Blackjack!";
-    } else if (blackjackState.playerScore > 21) {
+    } else if (playerScore > 21) {
         playerWon = false;
         blackjackState.status = "You Bust!";
     } else if (dealerScore > 21) {
         playerWon = true;
         blackjackState.status = "Dealer Busts!";
-    } else if (blackjackState.playerScore > dealerScore) {
+    } else if (playerScore > dealerScore) {
         playerWon = true;
         blackjackState.status = "You Win!";
-    } else if (blackjackState.playerScore === dealerScore) {
+    } else if (playerScore === dealerScore) {
          isPush = true;
          blackjackState.status = "Push!";
     } else {
@@ -679,6 +696,7 @@ function endBlackjackHand(isPlayerBlackjack = false) {
     if (playerWon) {
         const winnings = isPlayerBlackjack ? blackjackState.bet * 2.5 : blackjackState.bet * 2;
         gameState.balance += winnings;
+        gameState.stats.totalEarnings += winnings;
         showToast(`You won ${formatCurrency(winnings)}`, 'success');
     } else if (isPush) {
         gameState.balance += blackjackState.bet;
@@ -687,20 +705,91 @@ function endBlackjackHand(isPlayerBlackjack = false) {
          showToast(`You lost ${formatCurrency(blackjackState.bet)}`, 'error');
     }
     
-    DOM.casinoBlackjack.gameControls.classList.add('hidden');
-    DOM.casinoBlackjack.newHandBtn.classList.remove('hidden');
     renderUI();
 }
 
 function resetBlackjack() {
     blackjackState = {};
-    DOM.casinoBlackjack.newHandBtn.classList.add('hidden');
-    DOM.casinoBlackjack.bettingControls.classList.remove('hidden');
     DOM.casinoBlackjack.status.textContent = 'Place Your Bet';
     renderUI();
 }
 
-// --- Bank Logic ---
+// Casino: Slots
+function startSlots() {
+    const betAmount = Number(DOM.casinoSlots.betInput.value);
+    if (isNaN(betAmount) || betAmount <= 0) {
+        showToast("Please enter a valid bet amount.", "error");
+        return;
+    }
+    if (gameState.balance < betAmount) {
+        showToast("Not enough cash to place that bet.", "error");
+        return;
+    }
+    if (slotState.isSpinning) return;
+
+    gameState.balance -= betAmount;
+    slotState.isSpinning = true;
+    slotState.bet = betAmount;
+    renderUI();
+
+    let intervals = [];
+    DOM.casinoSlots.reels.forEach((reel, i) => {
+        reel.classList.add('spinning');
+        intervals[i] = setInterval(() => {
+            const randomIndex = Math.floor(Math.random() * slotState.reels[i].length);
+            reel.textContent = slotState.reels[i][randomIndex];
+        }, 100);
+    });
+
+    setTimeout(() => stopReel(0, intervals), 1000);
+    setTimeout(() => stopReel(1, intervals), 2000);
+    setTimeout(() => stopReel(2, intervals), 3000);
+}
+
+function stopReel(index, intervals) {
+    clearInterval(intervals[index]);
+    DOM.casinoSlots.reels[index].classList.remove('spinning');
+    const finalIndex = Math.floor(Math.random() * slotState.reels[index].length);
+    DOM.casinoSlots.reels[index].textContent = slotState.reels[index][finalIndex];
+
+    if (index === 2) {
+        calculateSlotWinnings();
+        slotState.isSpinning = false;
+        renderUI();
+    }
+}
+
+function calculateSlotWinnings() {
+    const result = [
+        DOM.casinoSlots.reels[0].textContent,
+        DOM.casinoSlots.reels[1].textContent,
+        DOM.casinoSlots.reels[2].textContent
+    ];
+    const resultString = result.join('');
+    
+    let winnings = 0;
+    
+    if (result[0] === result[1] && result[1] === result[2]) {
+        winnings = slotState.payouts[resultString] * slotState.bet || 0;
+    } else {
+        const cherryCount = result.filter(s => s === '🍒').length;
+        if (cherryCount === 2) {
+            winnings = slotState.payouts['🍒🍒'] * slotState.bet;
+        } else if (cherryCount === 1) {
+            winnings = slotState.payouts['🍒'] * slotState.bet;
+        }
+    }
+
+    if (winnings > 0) {
+        gameState.balance += winnings;
+        gameState.stats.totalEarnings += winnings;
+        showToast(`You won ${formatCurrency(winnings)}!`, 'success');
+    } else {
+        showToast('You lost. Try again!', 'error');
+    }
+}
+
+// Bank
 function depositSavings(amount) {
     if (amount > 0 && gameState.balance >= amount) {
         gameState.balance -= amount;
@@ -719,15 +808,21 @@ function withdrawSavings(amount) {
     }
 }
 
-function takeLoan() {
-    if (gameState.loan.principal === 0) {
-        gameState.balance += BANK_SETTINGS.LOAN_AMOUNT;
-        gameState.loan.principal = BANK_SETTINGS.LOAN_AMOUNT;
-        gameState.loan.remaining = BANK_SETTINGS.LOAN_AMOUNT * (1 + BANK_SETTINGS.LOAN_APR);
-        showToast(`Loan of ${formatCurrency(BANK_SETTINGS.LOAN_AMOUNT)} received!`, 'success');
+function takeLoan(amount) {
+    const creditLimit = getNetWorth() * BANK_SETTINGS.CREDIT_LIMIT_MULTIPLIER;
+    if (amount > 0 && gameState.loan.principal === 0 && amount <= creditLimit) {
+        gameState.balance += amount;
+        gameState.loan.principal = amount;
+        gameState.loan.remaining = amount * (1 + BANK_SETTINGS.LOAN_APR);
+        showToast(`Loan of ${formatCurrency(amount)} received!`, 'success');
         renderUI();
+    } else if (amount > creditLimit) {
+        showToast(`You can only borrow up to your credit limit of ${formatCurrency(creditLimit)}`, 'error');
+    } else if (gameState.loan.principal > 0) {
+        showToast(`You must repay your existing loan first.`, 'error');
     }
 }
+
 
 function repayLoan(amount) {
     if (amount > 0 && gameState.balance >= amount && gameState.loan.remaining > 0) {
@@ -743,8 +838,7 @@ function repayLoan(amount) {
     }
 }
 
-
-// --- Prestige Logic ---
+// Prestige
 function getNetWorth() {
     let assetValue = 0;
     gameState.businesses.forEach(biz => {
@@ -779,12 +873,14 @@ function prestige() {
         // Reset game state but keep prestige-related stats
         const prestigeData = {
             legacyPoints: gameState.legacyPoints,
-            newsHeadlines: gameState.newsHeadlines,
+            stats: gameState.stats, // Carry over stats
         };
-        gameState = {
+        const newGameState = {
             ...JSON.parse(JSON.stringify(initialGameState)),
             ...prestigeData,
         };
+        newGameState.stats.totalEarnings = gameState.stats.totalEarnings; // Keep total earnings
+        gameState = newGameState;
 
         showToast(`Prestiged! You earned ${legacyPointsEarned} Legacy Point(s).`, "success");
         navigateTo('dashboard');
@@ -793,70 +889,9 @@ function prestige() {
     }
 }
 
-
-function gameLoop() {
-    let totalIncomePerSecond = 0;
-    let totalMaintenancePerSecond = 0;
-    const prestigeMultiplier = 1 + (gameState.legacyPoints * 0.02);
-
-    gameState.businesses.forEach(business => {
-        const businessTypeInfo = BUSINESS_TYPES[business.type];
-        let incomeMultiplier = (business.boost && business.boost.timeLeft > 0) ? business.boost.multiplier : 1;
-        
-        if (business.boost && business.boost.timeLeft > 0) {
-            business.boost.timeLeft--;
-        } else if (business.boost) {
-            business.boost = null;
-        }
-
-        business.assets.forEach(asset => {
-            const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-            
-            switch (business.type) {
-                case 'TAXI':
-                case 'LOGISTICS':
-                    if (asset.odometer < assetType.maxOdometer) {
-                        asset.odometer += assetType.mileagePerSecond;
-                        totalIncomePerSecond += assetType.incomePerSecond * incomeMultiplier;
-                    } else {
-                        asset.odometer = assetType.maxOdometer;
-                    }
-                    break;
-                case 'REAL_ESTATE':
-                    totalIncomePerSecond += (assetType.incomePerSecond || 0) * incomeMultiplier;
-                    totalMaintenancePerSecond += (assetType.maintenanceCostPerSecond || 0);
-                    break;
-                case 'TECH_STARTUP':
-                    totalIncomePerSecond += (assetType.incomePerSecond || 0) * incomeMultiplier;
-                    // Chance to go viral
-                    const viralChance = 1 / 3600; // Approx once per hour per server
-                    if (Math.random() < viralChance && !business.boost) {
-                        business.boost = { multiplier: 100, timeLeft: 600 }; // 100x for 10 minutes
-                        showToast(`${business.customName} has gone viral! 100x income for 10 minutes!`, 'success');
-                    }
-                    break;
-            }
-        });
-    });
-    
-    // Bank interest
-    const interestPerSecond = gameState.savingsBalance * (BANK_SETTINGS.SAVINGS_APR / 31536000); // per year -> per second
-    gameState.savingsBalance += interestPerSecond;
-
-    gameState.balance += (totalIncomePerSecond * prestigeMultiplier) - totalMaintenancePerSecond;
-    if (gameState.balance < 0) gameState.balance = 0;
-    renderUI();
-}
-
 // --- UI Rendering ---
 function updateBalanceDisplay() {
     DOM.header.balance.textContent = formatCurrency(gameState.balance);
-}
-
-function updateNewsTicker() {
-    if (gameState.newsHeadlines.length > 0) {
-        DOM.dashboard.newsTickerContent.textContent = gameState.newsHeadlines.join(' ••• ');
-    }
 }
 
 function renderUI() {
@@ -866,16 +901,208 @@ function renderUI() {
         dashboard: renderDashboard,
         businessDetails: renderBusinessDetails,
         market: renderMarket,
-        "casino-hub": renderCasinoHub,
+        "casino-hub": () => { DOM.header.title.textContent = 'Casino'; DOM.header.subHeaderText.innerHTML = `High Risk, High Reward`; },
         "casino-roulette": renderCasinoRoulette,
         "casino-blackjack": renderBlackjack,
+        "casino-slots": renderSlots,
         prestige: renderPrestige,
         bank: renderBank,
+        profile: renderProfile,
     };
     const pageId = gameState.currentPage;
 
     if(pageRenderers[pageId]) {
         pageRenderers[pageId]();
+    }
+}
+
+function renderDashboard() {
+    DOM.header.title.textContent = 'Dashboard';
+    let totalIncomePerHour = 0;
+    let totalMaintenancePerHour = 0;
+    const prestigeMultiplier = 1 + (gameState.legacyPoints * 0.02);
+
+
+    gameState.businesses.forEach(biz => {
+        const businessTypeInfo = BUSINESS_TYPES[biz.type];
+        const multiplier = biz.boost ? biz.boost.multiplier : 1;
+        biz.assets.forEach(asset => {
+            const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
+            switch(biz.type) {
+                case 'TAXI':
+                case 'LOGISTICS':
+                     if (asset.odometer < assetType.maxOdometer) {
+                         totalIncomePerHour += assetType.incomePerSecond * 3600 * multiplier;
+                    }
+                    break;
+                default:
+                    totalIncomePerHour += (assetType.incomePerSecond || 0) * 3600 * multiplier;
+                    totalMaintenancePerHour += (assetType.maintenanceCostPerSecond || 0) * 3600;
+            }
+        });
+    });
+    
+    const netIncome = (totalIncomePerHour * prestigeMultiplier) - totalMaintenancePerHour;
+    const netIncomeColor = netIncome >= 0 ? 'text-green-500' : 'text-red-500';
+    DOM.header.subHeaderText.innerHTML = `Net Income: <span id="total-income-header" class="${netIncomeColor}">${formatCurrency(netIncome)}/hr</span>`;
+
+    DOM.dashboard.tapPowerDisplay.textContent = `${formatCurrency(gameState.tapPower * prestigeMultiplier)}/tap`;
+    DOM.dashboard.upgradeTapButton.textContent = `Upgrade Tap (${formatCurrency(gameState.tapUpgradeCost)})`;
+    DOM.dashboard.upgradeTapButton.disabled = gameState.balance < gameState.tapUpgradeCost;
+    DOM.dashboard.upgradeTapButton.classList.toggle('opacity-50', gameState.balance < gameState.tapUpgradeCost);
+    
+    // Manage start business buttons
+    Object.values(BUSINESS_TYPES).forEach(type => {
+        const btnId = `start-${type.id.toLowerCase().replace('_', '-')}-business`;
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        
+        const hasBusiness = gameState.businesses.some(b => b.type === type.id);
+        btn.disabled = gameState.balance < type.unlockCost || hasBusiness;
+        btn.classList.toggle('opacity-50', gameState.balance < type.unlockCost || hasBusiness);
+        
+        if(hasBusiness) {
+            btn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> ${type.name} Founded`;
+        } else {
+             // This is a bit fragile, might be better to rebuild the button's inner HTML
+            const textNode = Array.from(btn.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0);
+            if (textNode) {
+                textNode.textContent = ` Start ${type.name} (${formatCurrency(type.unlockCost, 0)})`;
+            }
+        }
+    });
+
+    DOM.dashboard.businessesContainer.innerHTML = '';
+    if (gameState.businesses.length === 0) {
+         DOM.dashboard.businessesContainer.innerHTML = `<div class="text-center text-gray-400 py-10">You have no businesses. Start one below!</div>`;
+    } else {
+        gameState.businesses.forEach(biz => {
+            const businessTypeInfo = BUSINESS_TYPES[biz.type];
+            const multiplier = biz.boost ? biz.boost.multiplier : 1;
+            let income = 0;
+            let maintenance = 0;
+            biz.assets.forEach(asset => {
+                const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
+                switch(biz.type) {
+                    case 'TAXI':
+                    case 'LOGISTICS':
+                        if (asset.odometer < assetType.maxOdometer) {
+                            income += assetType.incomePerSecond * 3600 * multiplier;
+                        }
+                        break;
+                    default:
+                          income += (assetType.incomePerSecond || 0) * 3600 * multiplier;
+                          maintenance += (assetType.maintenanceCostPerSecond || 0) * 3600;
+                }
+            });
+
+            const net = (income * prestigeMultiplier) - maintenance;
+            const netColor = net >= 0 ? 'text-green-400' : 'text-red-400';
+
+            const card = document.createElement('div');
+            card.className = 'bg-gray-700/50 p-4 rounded-xl shadow-lg hover:bg-gray-700 transition duration-200 cursor-pointer';
+            card.onclick = () => navigateTo('businessDetails', { businessId: biz.id });
+            card.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-bold text-yellow-300">${biz.customName}</h3>
+                        <p class="text-sm text-gray-300">${biz.assets.length} Asset(s)</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold ${netColor}">${formatCurrency(net)}/hr ${biz.boost ? '<span class="text-blue-400 animate-pulse">(BOOST!)</span>' : ''}</p>
+                        <svg class="w-6 h-6 text-gray-400 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </div>
+                </div>
+            `;
+            DOM.dashboard.businessesContainer.appendChild(card);
+        });
+    }
+}
+
+function renderBusinessDetails() {
+    const business = gameState.businesses.find(b => b.id === gameState.currentBusinessView);
+    if (!business) { navigateTo('dashboard'); return; }
+
+    const businessTypeInfo = BUSINESS_TYPES[business.type];
+    const prestigeMultiplier = 1 + (gameState.legacyPoints * 0.02);
+    const multiplier = (business.boost ? business.boost.multiplier : 1);
+    
+    let totalIncome = 0;
+    let totalMaintenance = 0;
+
+    business.assets.forEach(asset => {
+        const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
+        switch(business.type) {
+            case 'TAXI':
+            case 'LOGISTICS':
+                if (asset.odometer < assetType.maxOdometer) {
+                    totalIncome += assetType.incomePerSecond * 3600 * multiplier;
+                }
+                break;
+            default:
+                totalIncome += (assetType.incomePerSecond || 0) * 3600 * multiplier;
+                totalMaintenance += (assetType.maintenanceCostPerSecond || 0) * 3600;
+        }
+    });
+    
+    const netIncome = (totalIncome * prestigeMultiplier) - totalMaintenance;
+
+    DOM.businessDetails.name.textContent = business.customName;
+    DOM.businessDetails.income.textContent = formatCurrency(netIncome);
+    DOM.businessDetails.boostIndicator.textContent = business.boost ? `(BOOST! ${business.boost.timeLeft}s)` : '';
+
+    DOM.businessDetails.assetsContainer.innerHTML = '';
+    
+    if (business.assets.length === 0) {
+        DOM.businessDetails.assetsContainer.innerHTML = `<div class="text-center text-gray-400 py-10">No assets yet. Buy one below to start earning!</div>`;
+    } else {
+        business.assets.forEach((asset, index) => {
+            const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
+            const assetCard = document.createElement('div');
+            assetCard.className = `bg-gray-900 p-3 rounded-lg flex items-center justify-between`;
+            
+            let assetHtml = '';
+            switch(business.type) {
+                 case 'TAXI':
+                 case 'LOGISTICS':
+                    const isBroken = asset.odometer >= assetType.maxOdometer;
+                    const odometerPercentage = Math.min(100, (asset.odometer / assetType.maxOdometer) * 100);
+                    assetCard.classList.toggle('opacity-60', isBroken);
+                    assetHtml = `
+                        <img src="${assetType.imageUrl}" alt="${assetType.name}" class="w-16 h-12 object-cover rounded-md bg-gray-700 mr-3">
+                        <div class="flex-grow">
+                            <p class="font-semibold">${assetType.name} #${index + 1}</p>
+                            <div class="w-full bg-gray-600 rounded-full h-2.5 mt-1">
+                                <div class="progress-bar-inner ${isBroken ? 'bg-red-600' : 'bg-yellow-400'} h-2.5 rounded-full" style="width: ${odometerPercentage}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">${formatNumber(Math.floor(asset.odometer))} / ${formatNumber(assetType.maxOdometer)} km</p>
+                        </div>
+                        <div class="text-right ml-3 w-28">
+                        ${isBroken ? `
+                            <button onclick="replaceAsset(${business.id}, ${asset.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 text-sm rounded-lg transition duration-200 ${gameState.balance < assetType.cost ? 'opacity-50' : ''}" ${gameState.balance < assetType.cost ? 'disabled' : ''}>
+                                Replace<br>(${formatCurrency(assetType.cost, 0)})
+                            </button>
+                        ` : `<p class="font-bold text-green-400">+${formatCurrency(assetType.incomePerSecond*3600*multiplier*prestigeMultiplier)}/hr</p>`}
+                        </div>
+                    `;
+                    break;
+                default:
+                    assetHtml = `
+                        <img src="${assetType.imageUrl}" alt="${assetType.name}" class="w-16 h-12 object-cover rounded-md bg-gray-700 mr-3">
+                        <div class="flex-grow">
+                            <p class="font-semibold">${assetType.name} #${index + 1}</p>
+                            <p class="text-sm text-green-400">Income: ${formatCurrency(assetType.incomePerSecond * 3600 * multiplier * prestigeMultiplier)}/hr</p>
+                            ${assetType.maintenanceCostPerSecond ? `<p class="text-sm text-red-400">Maint: ${formatCurrency(assetType.maintenanceCostPerSecond * 3600)}/hr</p>` : ''}
+                        </div>
+                        <div class="text-right ml-3 w-28">
+                            <p class="font-bold text-yellow-400">Net<br>${formatCurrency((assetType.incomePerSecond * multiplier * prestigeMultiplier - (assetType.maintenanceCostPerSecond || 0)) * 3600)}/hr</p>
+                        </div>
+                    `;
+                    break;
+            }
+            assetCard.innerHTML = assetHtml;
+            DOM.businessDetails.assetsContainer.appendChild(assetCard);
+        });
     }
 }
 
@@ -912,10 +1139,11 @@ function renderMarket() {
                     <p class="${changeColor}">${changeSign} ${formatCurrency(Math.abs(change))}</p>
                 </div>
             </div>
-            <div class="flex justify-end space-x-2 mt-4">
-                <button onclick="buyStock('${ticker}', 1)" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-4 rounded transition">Buy 1</button>
-                <button onclick="sellStock('${ticker}', 1)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-4 rounded transition ${sellButtonsDisabled ? 'opacity-50 cursor-not-allowed' : ''}" ${sellButtonsDisabled ? 'disabled' : ''}>Sell 1</button>
-                <button onclick="sellStock('${ticker}', ${sharesOwned})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-4 rounded transition ${sellButtonsDisabled ? 'opacity-50 cursor-not-allowed' : ''}" ${sellButtonsDisabled ? 'disabled' : ''}>Sell All</button>
+            <div class="flex items-center space-x-2 mt-4">
+                 <input type="number" id="stock-amount-${ticker}" class="bg-gray-800 text-white rounded-md px-2 py-1 w-20 text-center" value="1" min="1">
+                 <button onclick="buyStock('${ticker}', document.getElementById('stock-amount-${ticker}').valueAsNumber)" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded transition text-sm">Buy</button>
+                 <button onclick="sellStock('${ticker}', document.getElementById('stock-amount-${ticker}').valueAsNumber)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded transition text-sm ${sellButtonsDisabled ? 'opacity-50 cursor-not-allowed' : ''}" ${sellButtonsDisabled ? 'disabled' : ''}>Sell</button>
+                 <button onclick="sellStock('${ticker}', ${sharesOwned})" class="bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-1 px-3 rounded transition text-sm ${sellButtonsDisabled ? 'opacity-50 cursor-not-allowed' : ''}" ${sellButtonsDisabled ? 'disabled' : ''}>Sell All</button>
             </div>
         `;
         DOM.pages.market.appendChild(card);
@@ -938,15 +1166,11 @@ function openAssetStoreModal() {
             case 'TAXI':
             case 'LOGISTICS':
                  detailsHtml = `<p class="text-sm text-green-400">Income: ${formatCurrency(assetType.incomePerSecond * 3600)}/hr</p>
-                           <p class="text-xs text-gray-400">Durability: ${formatNumber(assetType.maxOdometer)} km</p>`;
+                             <p class="text-xs text-gray-400">Durability: ${formatNumber(assetType.maxOdometer)} km</p>`;
                 break;
-            case 'REAL_ESTATE':
+            default:
                  detailsHtml = `<p class="text-sm text-green-400">Income: ${formatCurrency(assetType.incomePerSecond * 3600)}/hr</p>
-                           <p class="text-sm text-red-400">Maintenance: ${formatCurrency(assetType.maintenanceCostPerSecond * 3600)}/hr</p>`;
-                break;
-            case 'TECH_STARTUP':
-                 detailsHtml = `<p class="text-sm text-green-400">Base Income: ${formatCurrency(assetType.incomePerSecond * 3600)}/hr</p>
-                           <p class="text-xs text-sky-400">Chance to go viral!</p>`;
+                              ${assetType.maintenanceCostPerSecond ? `<p class="text-sm text-red-400">Maint: ${formatCurrency(assetType.maintenanceCostPerSecond * 3600)}/hr</p>` : ''}`;
                 break;
         }
 
@@ -963,11 +1187,6 @@ function openAssetStoreModal() {
         DOM.modals.assetStoreList.appendChild(item);
     });
     DOM.modals.assetStore.classList.remove('hidden');
-}
-
-function renderCasinoHub() {
-     DOM.header.title.textContent = 'Casino';
-     DOM.header.subHeaderText.innerHTML = `High Risk, High Reward`;
 }
 
 function renderCasinoRoulette() {
@@ -994,6 +1213,8 @@ function renderBlackjack() {
     DOM.header.title.textContent = 'Blackjack';
     DOM.header.subHeaderText.innerHTML = `Beat the Dealer`;
 
+    updateBlackjackControls();
+
     if (!blackjackState.deck) {
         DOM.casinoBlackjack.dealerHand.innerHTML = '';
         DOM.casinoBlackjack.playerHand.innerHTML = '';
@@ -1018,7 +1239,14 @@ function renderBlackjack() {
 
     // Render Scores
     DOM.casinoBlackjack.playerScore.textContent = calculateScore(blackjackState.playerHand);
-    DOM.casinoBlackjack.dealerScore.textContent = blackjackState.gameOver ? calculateScore(blackjackState.dealerHand) : calculateScore([blackjackState.dealerHand[1]]);
+    DOM.casinoBlackjack.dealerScore.textContent = blackjackState.gameOver ? calculateScore(blackjackState.dealerHand) : (blackjackState.dealerHand[1] ? getCardValue(blackjackState.dealerHand[1]) : 0);
+}
+
+function renderSlots() {
+    DOM.header.title.textContent = 'Slots';
+    DOM.header.subHeaderText.innerHTML = `High Risk, High Reward`;
+    DOM.casinoSlots.spinBtn.disabled = slotState.isSpinning;
+    DOM.casinoSlots.spinBtn.classList.toggle('opacity-50', slotState.isSpinning);
 }
 
 function renderPrestige() {
@@ -1057,55 +1285,150 @@ function renderBank() {
     DOM.header.title.textContent = 'Bank';
     DOM.header.subHeaderText.innerHTML = `Manage Your Capital`;
     
+    const creditLimit = getNetWorth() * BANK_SETTINGS.CREDIT_LIMIT_MULTIPLIER;
+
     DOM.bank.savingsBalance.textContent = formatCurrency(gameState.savingsBalance);
     DOM.bank.debtBalance.textContent = formatCurrency(gameState.loan.remaining);
+    DOM.bank.creditLimit.textContent = formatCurrency(creditLimit, 0);
 
     DOM.bank.takeLoanBtn.disabled = gameState.loan.principal > 0;
     DOM.bank.takeLoanBtn.classList.toggle('opacity-50', DOM.bank.takeLoanBtn.disabled);
-    if(DOM.bank.takeLoanBtn.disabled) {
-        DOM.bank.takeLoanBtn.textContent = "Loan Active";
+}
+
+function renderProfile() {
+    DOM.header.title.textContent = 'Profile';
+    DOM.header.subHeaderText.innerHTML = `Career Statistics`;
+    
+    DOM.profile.netWorth.textContent = formatCurrency(getNetWorth(), 0);
+    DOM.profile.totalEarnings.textContent = formatCurrency(gameState.stats.totalEarnings, 0);
+    DOM.profile.totalTaps.textContent = formatNumber(gameState.stats.totalTaps);
+
+    const time = gameState.stats.timePlayed;
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const seconds = time % 60;
+    DOM.profile.timePlayed.textContent = `${hours}h ${minutes}m ${seconds}s`;
+}
+
+// --- Game Loop & Save/Load ---
+function gameLoop() {
+    let totalIncomePerSecond = 0;
+    let totalMaintenancePerSecond = 0;
+    const prestigeMultiplier = 1 + (gameState.legacyPoints * 0.02);
+
+    gameState.businesses.forEach(business => {
+        const businessTypeInfo = BUSINESS_TYPES[business.type];
+        let incomeMultiplier = (business.boost && business.boost.timeLeft > 0) ? business.boost.multiplier : 1;
+        
+        if (business.boost && business.boost.timeLeft > 0) {
+            business.boost.timeLeft--;
+        } else if (business.boost) {
+            business.boost = null;
+        }
+
+        business.assets.forEach(asset => {
+            const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
+            
+            switch (business.type) {
+                case 'TAXI':
+                case 'LOGISTICS':
+                    if (asset.odometer < assetType.maxOdometer) {
+                        asset.odometer += assetType.mileagePerSecond;
+                        totalIncomePerSecond += assetType.incomePerSecond * incomeMultiplier;
+                    } else {
+                        asset.odometer = assetType.maxOdometer;
+                    }
+                    break;
+                default:
+                    totalIncomePerSecond += (assetType.incomePerSecond || 0) * incomeMultiplier;
+                    totalMaintenancePerSecond += (assetType.maintenanceCostPerSecond || 0);
+                    break;
+            }
+        });
+    });
+    
+    // Bank interest (savings and debt)
+    const savingsInterestPerSecond = gameState.savingsBalance * (BANK_SETTINGS.SAVINGS_APR / 31536000); // per second
+    gameState.savingsBalance += savingsInterestPerSecond;
+    
+    const loanInterestPerSecond = gameState.loan.principal * (BANK_SETTINGS.LOAN_APR / 31536000);
+    gameState.loan.remaining += loanInterestPerSecond;
+
+    const incomeThisTick = (totalIncomePerSecond * prestigeMultiplier);
+    gameState.balance += incomeThisTick - totalMaintenancePerSecond;
+    gameState.stats.totalEarnings += Math.max(0, incomeThisTick - totalMaintenancePerSecond); // only count positive income
+    gameState.stats.timePlayed++;
+
+    if (gameState.balance < 0) gameState.balance = 0;
+    
+    // More efficient UI updates
+    if (['dashboard', 'businessDetails', 'bank', 'prestige', 'profile'].includes(gameState.currentPage)) {
+         renderUI(); 
     } else {
-        DOM.bank.takeLoanBtn.textContent = `Take Loan (${formatCurrency(BANK_SETTINGS.LOAN_AMOUNT, 0)} @ ${BANK_SETTINGS.LOAN_APR * 100}% APR)`;
+        updateBalanceDisplay(); 
     }
 }
 
-// --- Save/Load ---
-function saveGame() { localStorage.setItem('tycoonClickerSave_v10', JSON.stringify(gameState)); }
+function saveGame() { 
+    try {
+        localStorage.setItem('tycoonClickerSave_v12', JSON.stringify(gameState));
+    } catch (e) {
+        console.error("Failed to save game:", e);
+    }
+}
 function loadGame() {
-    const savedGame = localStorage.getItem('tycoonClickerSave_v10');
+    const savedGame = localStorage.getItem('tycoonClickerSave_v12');
     if (savedGame) {
-        const loaded = JSON.parse(savedGame);
-         gameState = { ...initialGameState, ...gameState, ...loaded };
-         if (!gameState.loan) gameState.loan = { principal: 0, remaining: 0 };
-         if (!gameState.savingsBalance) gameState.savingsBalance = 0;
-         if (!gameState.hasYacht) gameState.hasYacht = false;
-         if (!gameState.legacyPoints) gameState.legacyPoints = 0;
+        try {
+            const loaded = JSON.parse(savedGame);
+             // A safe way to load, ensuring new properties aren't missing from saved state
+             const tempState = JSON.parse(JSON.stringify(initialGameState));
+             const mergedStats = { ...tempState.stats, ...loaded.stats };
+             gameState = { ...tempState, ...loaded, stats: mergedStats };
+        } catch(e) {
+            console.error("Failed to load saved game:", e);
+            gameState = JSON.parse(JSON.stringify(initialGameState)); // Start fresh on load error
+        }
     }
 }
 
 // --- Initialization ---
 function init() {
+    // Navigation
     DOM.nav.buttons.forEach(btn => btn.addEventListener('click', () => navigateTo(btn.dataset.page)));
+    DOM.businessDetails.backButton.addEventListener('click', () => navigateTo('dashboard'));
+
+    // Modals
     DOM.businessDetails.openAssetStoreBtn.addEventListener('click', openAssetStoreModal);
     DOM.modals.closeAssetStore.addEventListener('click', () => DOM.modals.assetStore.classList.add('hidden'));
+    
+    // Business Name Modal (cleaner logic)
+    DOM.modals.confirmBusinessName.addEventListener('click', () => {
+        if (!businessToStart.type) return;
+        const typeInfo = BUSINESS_TYPES[businessToStart.type];
+        const businessName = DOM.modals.businessNameInput.value.trim() || `My ${typeInfo.name}`;
+        gameState.balance -= typeInfo.unlockCost;
+        gameState.businesses.push({ id: Date.now(), type: businessToStart.type, customName: businessName, assets: [], boost: null });
+        DOM.modals.businessName.classList.add('hidden');
+        businessToStart.type = null; // Reset context
+        renderUI();
+    });
+    DOM.modals.cancelBusinessName.addEventListener('click', () => {
+        DOM.modals.businessName.classList.add('hidden');
+        businessToStart.type = null; // Reset context
+    });
+    if (DOM.modals.suggestNameButton) {
+        DOM.modals.suggestNameButton.addEventListener('click', suggestBusinessName);
+    }
 
+
+    // Dashboard
     DOM.dashboard.tapButton.addEventListener('click', handleTap);
     DOM.dashboard.upgradeTapButton.addEventListener('click', upgradeTap);
     DOM.dashboard.startTaxiBusinessButton.addEventListener('click', () => startBusiness('TAXI'));
     DOM.dashboard.startRealEstateButton.addEventListener('click', () => startBusiness('REAL_ESTATE'));
     DOM.dashboard.startLogisticsButton.addEventListener('click', () => startBusiness('LOGISTICS'));
     DOM.dashboard.startTechStartupButton.addEventListener('click', () => startBusiness('TECH_STARTUP'));
-
-    DOM.modals.cancelBusinessName.addEventListener('click', () => {
-        DOM.modals.businessName.classList.add('hidden');
-         // Clean up listener to prevent duplicates
-        const oldConfirm = DOM.modals.confirmBusinessName;
-        const newConfirm = oldConfirm.cloneNode(true);
-        oldConfirm.parentNode.replaceChild(newConfirm, oldConfirm);
-        DOM.modals.confirmBusinessName = newConfirm;
-    });
-    DOM.businessDetails.backButton.addEventListener('click', () => navigateTo('dashboard'));
-    DOM.modals.suggestNameButton.addEventListener('click', suggestBusinessName);
     DOM.businessDetails.getIntelButton.addEventListener('click', getBusinessIntel);
     
     // Casino listeners
@@ -1118,7 +1441,7 @@ function init() {
     DOM.casinoBlackjack.hitBtn.addEventListener('click', blackjackHit);
     DOM.casinoBlackjack.standBtn.addEventListener('click', blackjackStand);
     DOM.casinoBlackjack.newHandBtn.addEventListener('click', resetBlackjack);
-
+    DOM.casinoSlots.spinBtn.addEventListener('click', startSlots);
 
      // Prestige listeners
     DOM.prestige.buyYachtBtn.addEventListener('click', buyYacht);
@@ -1127,217 +1450,18 @@ function init() {
     // Bank listeners
     DOM.bank.depositBtn.addEventListener('click', () => depositSavings(Number(DOM.bank.amountInput.value)));
     DOM.bank.withdrawBtn.addEventListener('click', () => withdrawSavings(Number(DOM.bank.amountInput.value)));
-    DOM.bank.takeLoanBtn.addEventListener('click', takeLoan);
+    DOM.bank.takeLoanBtn.addEventListener('click', () => takeLoan(Number(DOM.bank.loanAmountInput.value)));
     DOM.bank.repayBtn.addEventListener('click', () => repayLoan(Number(DOM.bank.repayInput.value)));
-
 
     loadGame();
     generateRouletteSequence();
     renderRouletteWheel();
     navigateTo(gameState.currentPage || 'dashboard');
     
-    fetchNews();
-    setInterval(fetchNews, 120000); // Fetch new headlines every 2 minutes
     setInterval(fluctuateStocks, 2000); // Update stock prices every 2 seconds
-
     setInterval(gameLoop, 1000);
     setInterval(saveGame, 5000);
 }
 
-init();
-
-function renderBusinessDetails() {
-    const business = gameState.businesses.find(b => b.id === gameState.currentBusinessView);
-    if (!business) { navigateTo('dashboard'); return; }
-
-    const businessTypeInfo = BUSINESS_TYPES[business.type];
-    const prestigeMultiplier = 1 + (gameState.legacyPoints * 0.02);
-    const multiplier = (business.boost ? business.boost.multiplier : 1) * prestigeMultiplier;
-    
-    let totalIncome = 0;
-    let totalMaintenance = 0;
-
-    business.assets.forEach(asset => {
-        const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-        switch(business.type) {
-            case 'TAXI':
-            case 'LOGISTICS':
-                if (asset.odometer < assetType.maxOdometer) {
-                    totalIncome += assetType.incomePerSecond * 3600 * multiplier;
-                }
-                break;
-            default:
-                totalIncome += (assetType.incomePerSecond || 0) * 3600 * multiplier;
-                totalMaintenance += (assetType.maintenanceCostPerSecond || 0) * 3600;
-        }
-    });
-
-    DOM.businessDetails.name.textContent = business.customName;
-    DOM.businessDetails.income.textContent = formatCurrency(totalIncome - totalMaintenance);
-    DOM.businessDetails.boostIndicator.textContent = business.boost ? `(BOOM! ${business.boost.timeLeft}s)` : '';
-
-    DOM.businessDetails.assetsContainer.innerHTML = '';
-    
-    if (business.assets.length === 0) {
-        DOM.businessDetails.assetsContainer.innerHTML = `<div class="text-center text-gray-400 py-10">No assets yet. Buy one below to start earning!</div>`;
-    } else {
-        business.assets.forEach((asset, index) => {
-            const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-            const assetCard = document.createElement('div');
-            assetCard.className = `bg-gray-900 p-3 rounded-lg flex items-center justify-between`;
-            
-            let assetHtml = '';
-            switch(business.type) {
-                 case 'TAXI':
-                 case 'LOGISTICS':
-                    const isBroken = asset.odometer >= assetType.maxOdometer;
-                    const odometerPercentage = Math.min(100, (asset.odometer / assetType.maxOdometer) * 100);
-                    assetCard.classList.toggle('opacity-60', isBroken);
-                    assetHtml = `
-                        <img src="${assetType.imageUrl}" alt="${assetType.name}" class="w-16 h-12 object-cover rounded-md bg-gray-700 mr-3">
-                        <div class="flex-grow">
-                            <p class="font-semibold">${assetType.name} #${index + 1}</p>
-                            <div class="w-full bg-gray-600 rounded-full h-2.5 mt-1">
-                                <div class="progress-bar-inner ${isBroken ? 'bg-red-600' : 'bg-yellow-400'} h-2.5 rounded-full" style="width: ${odometerPercentage}%"></div>
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">${formatNumber(Math.floor(asset.odometer))} / ${formatNumber(assetType.maxOdometer)} km</p>
-                        </div>
-                        <div class="text-right ml-3 w-28">
-                        ${isBroken ? `
-                            <button onclick="replaceAsset(${business.id}, ${asset.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 text-sm rounded-lg transition duration-200 ${gameState.balance < assetType.cost ? 'opacity-50' : ''}" ${gameState.balance < assetType.cost ? 'disabled' : ''}>
-                                Replace<br>(${formatCurrency(assetType.cost, 0)})
-                            </button>
-                        ` : `<p class="font-bold text-green-400">+${formatCurrency(assetType.incomePerSecond*3600*multiplier)}/hr</p>`}
-                        </div>
-                    `;
-                    break;
-                case 'REAL_ESTATE':
-                    assetHtml = `
-                        <img src="${assetType.imageUrl}" alt="${assetType.name}" class="w-16 h-12 object-cover rounded-md bg-gray-700 mr-3">
-                        <div class="flex-grow">
-                            <p class="font-semibold">${assetType.name} #${index + 1}</p>
-                            <p class="text-sm text-green-400">Income: ${formatCurrency(assetType.incomePerSecond * 3600 * multiplier)}/hr</p>
-                            <p class="text-sm text-red-400">Maintenance: ${formatCurrency(assetType.maintenanceCostPerSecond * 3600)}/hr</p>
-                        </div>
-                        <div class="text-right ml-3 w-28">
-                            <p class="font-bold text-yellow-400">Net<br>${formatCurrency((assetType.incomePerSecond * multiplier - assetType.maintenanceCostPerSecond) * 3600)}/hr</p>
-                        </div>
-                    `;
-                    break;
-                 case 'TECH_STARTUP':
-                     assetHtml = `
-                        <img src="${assetType.imageUrl}" alt="${assetType.name}" class="w-16 h-12 object-cover rounded-md bg-gray-700 mr-3">
-                        <div class="flex-grow">
-                            <p class="font-semibold">${assetType.name} #${index + 1}</p>
-                            <p class="text-sm ${business.boost ? 'text-green-400 animate-pulse' : 'text-gray-400'}">Status: ${business.boost ? 'VIRAL!' : 'Stable'}</p>
-                        </div>
-                        <div class="text-right ml-3 w-28">
-                            <p class="font-bold text-green-400">+${formatCurrency(assetType.incomePerSecond*3600*multiplier)}/hr</p>
-                        </div>
-                     `;
-                    break;
-            }
-            assetCard.innerHTML = assetHtml;
-            DOM.businessDetails.assetsContainer.appendChild(assetCard);
-        });
-    }
-}
-
-function renderDashboard() {
-    DOM.header.title.textContent = 'Dashboard';
-    let totalIncomePerHour = 0;
-    let totalMaintenancePerHour = 0;
-    const prestigeMultiplier = 1 + (gameState.legacyPoints * 0.02);
-
-
-    gameState.businesses.forEach(biz => {
-        const businessTypeInfo = BUSINESS_TYPES[biz.type];
-        const multiplier = biz.boost ? biz.boost.multiplier : 1;
-        biz.assets.forEach(asset => {
-            const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-            switch(biz.type) {
-                case 'TAXI':
-                case 'LOGISTICS':
-                     if (asset.odometer < assetType.maxOdometer) {
-                         totalIncomePerHour += assetType.incomePerSecond * 3600 * multiplier;
-                    }
-                    break;
-                default:
-                    totalIncomePerHour += (assetType.incomePerSecond || 0) * 3600 * multiplier;
-                    totalMaintenancePerHour += (assetType.maintenanceCostPerSecond || 0) * 3600;
-            }
-        });
-    });
-    
-    const netIncome = (totalIncomePerHour * prestigeMultiplier) - totalMaintenancePerHour;
-    const netIncomeColor = netIncome >= 0 ? 'text-green-500' : 'text-red-500';
-    DOM.header.subHeaderText.innerHTML = `Net Income: <span id="total-income-header" class="${netIncomeColor}">${formatCurrency(netIncome)}/hr</span>`;
-
-    DOM.dashboard.tapPowerDisplay.textContent = `${formatCurrency(gameState.tapPower)}/tap`;
-    DOM.dashboard.upgradeTapButton.textContent = `Upgrade Tap (${formatCurrency(gameState.tapUpgradeCost)})`;
-    DOM.dashboard.upgradeTapButton.disabled = gameState.balance < gameState.tapUpgradeCost;
-    DOM.dashboard.upgradeTapButton.classList.toggle('opacity-50', gameState.balance < gameState.tapUpgradeCost);
-    
-    // Manage start business buttons
-    Object.values(BUSINESS_TYPES).forEach(type => {
-        const btnId = `start-${type.id.toLowerCase().replace('_', '-')}-business`;
-        const btn = document.getElementById(btnId);
-        if (!btn) return;
-        
-        const hasBusiness = gameState.businesses.some(b => b.type === type.id);
-        btn.disabled = gameState.balance < type.unlockCost || hasBusiness;
-        btn.classList.toggle('opacity-50', gameState.balance < type.unlockCost || hasBusiness);
-        
-        if(hasBusiness) {
-            btn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> ${type.name} Founded`;
-        } else {
-            btn.innerHTML = btn.innerHTML.replace(/\(\$.*?\)/, `(${formatCurrency(type.unlockCost, 0)})`);
-        }
-    });
-
-    DOM.dashboard.businessesContainer.innerHTML = '';
-    if (gameState.businesses.length === 0) {
-         DOM.dashboard.businessesContainer.innerHTML = `<div class="text-center text-gray-400 py-10">You have no businesses. Start one below!</div>`;
-    } else {
-        gameState.businesses.forEach(biz => {
-            const businessTypeInfo = BUSINESS_TYPES[biz.type];
-            const multiplier = biz.boost ? biz.boost.multiplier : 1;
-            let income = 0;
-            let maintenance = 0;
-            biz.assets.forEach(asset => {
-                const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-                switch(biz.type) {
-                    case 'TAXI':
-                    case 'LOGISTICS':
-                        if (asset.odometer < assetType.maxOdometer) {
-                            income += assetType.incomePerSecond * 3600 * multiplier;
-                        }
-                        break;
-                    default:
-                         income += (assetType.incomePerSecond || 0) * 3600 * multiplier;
-                         maintenance += (assetType.maintenanceCostPerSecond || 0) * 3600;
-                }
-            });
-
-            const net = (income * prestigeMultiplier) - maintenance;
-            const netColor = net >= 0 ? 'text-green-400' : 'text-red-400';
-
-            const card = document.createElement('div');
-            card.className = 'bg-gray-700/50 p-4 rounded-xl shadow-lg hover:bg-gray-700 transition duration-200 cursor-pointer';
-            card.onclick = () => navigateTo('businessDetails', { businessId: biz.id });
-            card.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h3 class="text-lg font-bold text-yellow-300">${biz.customName}</h3>
-                        <p class="text-sm text-gray-300">${biz.assets.length} Asset(s)</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-bold ${netColor}">${formatCurrency(net)}/hr ${biz.boost ? '<span class="text-blue-400 animate-pulse">(VIRAL!)</span>' : ''}</p>
-                        <svg class="w-6 h-6 text-gray-400 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                    </div>
-                </div>
-            `;
-            DOM.dashboard.businessesContainer.appendChild(card);
-        });
-    }
-}
+// --- Start the game ---
+document.addEventListener('DOMContentLoaded', init);
