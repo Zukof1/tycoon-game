@@ -6,9 +6,9 @@
     <title>Capital Clicker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-black flex items-center justify-center h-screen">
+<body class="flex items-center justify-center h-screen">
 
     <!-- Game Container -->
     <div class="w-full max-w-md h-full bg-gray-900 flex flex-col shadow-2xl overflow-hidden relative">
@@ -72,9 +72,6 @@
                         <h1 id="business-details-name" class="text-xl font-bold text-yellow-400"></h1>
                         <p class="text-sm font-semibold text-gray-400">Net Income: <span id="business-details-income" class="text-green-500"></span>/hr <span id="business-boost-indicator" class="text-blue-400"></span></p>
                     </div>
-                     <button id="get-intel-btn" class="p-2 rounded-full hover:bg-gray-700" title="Get Business Intel">
-                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </button>
                 </div>
                 <div id="business-details-assets" class="flex-grow overflow-y-auto p-4 space-y-3"></div>
                 <div class="p-4 bg-gray-900/50 border-t border-gray-700">
@@ -190,9 +187,11 @@
                         <div class="grid grid-cols-2 gap-2 text-left">
                             <span>💎💎💎</span><span class="text-right font-bold text-amber-400">50x Bet</span>
                             <span>💰💰💰</span><span class="text-right font-bold text-amber-400">20x Bet</span>
+                            <span>💵💵💵</span><span class="text-right font-bold text-amber-400">15x Bet</span>
                             <span>🔔🔔🔔</span><span class="text-right font-bold text-amber-400">10x Bet</span>
-                            <span>🍒🍒•</span><span class="text-right font-bold text-amber-400">2x Bet</span>
-                            <span>🍒••</span><span class="text-right font-bold text-amber-400">1x Bet</span>
+                            <span>🍒🍒🍒</span><span class="text-right font-bold text-amber-400">5x Bet</span>
+                            <span>🍒🍒</span><span class="text-right font-bold text-amber-400">2x Bet</span>
+                            <span>🍒</span><span class="text-right font-bold text-amber-400">1x Bet</span>
                         </div>
                     </div>
                     <!-- Controls -->
@@ -241,24 +240,10 @@
             
             <!-- ===== Bank Page ===== -->
             <div id="page-bank" class="page page-hidden w-full h-full flex flex-col bg-gray-800/30 p-4 space-y-4 overflow-y-auto">
-                <!-- Savings Account -->
-                <div class="bg-gray-900/50 rounded-xl p-6">
-                    <h2 class="text-2xl font-bold text-cyan-300 mb-2">Savings Account</h2>
-                    <p class="text-gray-400 mb-4">Earn safe, reliable interest on your deposits.</p>
-                    <div class="bg-gray-800 rounded-lg p-4 text-center">
-                        <p class="text-lg text-gray-300">Current Savings</p>
-                        <p id="bank-savings-balance" class="text-4xl font-bold text-cyan-400">$0.00</p>
-                        <p class="text-gray-400">Interest Rate (APR): <span id="bank-interest-rate" class="font-bold text-green-400">3.00%</span></p>
+                <div class="bg-gray-900/50 rounded-xl p-6 text-center">
+                    <img src="assets/bank_logo.png" alt="MVGS Bank Logo" class="w-24 h-24 mx-auto mb-4 rounded-full">
+                    <h2 class="text-3xl font-bold text-cyan-300">MVGS Bank</h2>
                     </div>
-                    <div class="mt-4 space-y-2">
-                        <input type="number" id="bank-amount-input" placeholder="Amount" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-3 text-center focus:outline-none focus:ring-2 focus:ring-cyan-400">
-                        <div class="grid grid-cols-2 gap-2">
-                            <button id="bank-deposit-btn" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg transition">Deposit</button>
-                            <button id="bank-withdraw-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg transition">Withdraw</button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Loans -->
                 <div class="bg-gray-900/50 rounded-xl p-6">
                     <h2 class="text-2xl font-bold text-orange-300 mb-2">Loans</h2>
@@ -356,7 +341,7 @@
 
     </div>
 
-    <script src="script.js"></script>
+    <script src="js/script.js"></script>
 </body>
-</html>
+</html>     
 

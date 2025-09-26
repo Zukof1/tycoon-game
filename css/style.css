@@ -1,7 +1,8 @@
 body {
-    font-family: 'Inter', sans-serif;
-    touch-action: manipulation; /* Prevents double-tap zoom on mobile */
-    color: #e5e7eb; /* Default text color */
+    background-image: url('../assets/background.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 .tap-button {
     transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
@@ -61,9 +62,6 @@ body {
 }
 
 /* Casino Styles */
-#roulette-wheel {
-    transition: transform 4s cubic-bezier(0.25, 1, 0.5, 1);
-}
 .playing-card {
     width: 60px;
     height: 90px;
@@ -103,4 +101,23 @@ body {
 @keyframes slot-spin {
     from { transform: translateY(-10px); }
     to { transform: translateY(10px); }
+}
+@keyframes roulette-spin {
+  /* Start the spin instantly and fast */
+  0% {
+    transform: translateX(0);
+    animation-timing-function: cubic-bezier(0.5, 1, 0.7, 1); /* Starts fast */
+  }
+  /* At 60% of the way through, it has almost reached the end */
+  60% {
+    transform: translateX(var(--roulette-end-position));
+    animation-timing-function: cubic-bezier(0.2, 0, 0.1, 1); /* Begins to slow down */
+  }
+  /* The rest of the animation is a slow, gentle coast to the final spot */
+  100% {
+    transform: translateX(var(--roulette-end-position));
+  }
+}
+.is-spinning {
+    animation: roulette-spin 4s forwards;
 }
