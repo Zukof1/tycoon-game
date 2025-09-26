@@ -102,22 +102,19 @@ body {
     from { transform: translateY(-10px); }
     to { transform: translateY(10px); }
 }
+/* style.css */
+
 @keyframes roulette-spin {
-  /* Start the spin instantly and fast */
+  /* The spin starts fast and travels most of the way */
   0% {
     transform: translateX(0);
-    animation-timing-function: cubic-bezier(0.5, 1, 0.7, 1); /* Starts fast */
+    animation-timing-function: cubic-bezier(.1, .8, .4, 1); /* A custom curve for a strong start */
   }
-  /* At 60% of the way through, it has almost reached the end */
-  60% {
-    transform: translateX(var(--roulette-end-position));
-    animation-timing-function: cubic-bezier(0.2, 0, 0.1, 1); /* Begins to slow down */
-  }
-  /* The rest of the animation is a slow, gentle coast to the final spot */
+  /* It smoothly coasts to its final resting position */
   100% {
     transform: translateX(var(--roulette-end-position));
   }
 }
 .is-spinning {
     animation: roulette-spin 4s forwards;
-}
+}     

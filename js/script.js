@@ -23,6 +23,7 @@ const DOM = {
         tapPowerDisplay: document.getElementById('tap-power-display'),
         upgradeTapButton: document.getElementById('upgrade-tap-button'),
         businessesContainer: document.getElementById('businesses-container'),
+        startShopButton: document.getElementById('start-shop-business'),
         startTaxiBusinessButton: document.getElementById('start-taxi-business'),
         startRealEstateButton: document.getElementById('start-real-estate-business'),
         startLogisticsButton: document.getElementById('start-logistics-business'),
@@ -36,6 +37,7 @@ const DOM = {
         openAssetStoreBtn: document.getElementById('open-asset-store-btn'),
         backButton: document.getElementById('back-to-dashboard-btn'),
         boostIndicator: document.getElementById('business-boost-indicator'),
+        upgradeShopBtn: document.getElementById('upgrade-shop-btn'),
     },
     casinoHub: {
         gameButtons: document.querySelectorAll('.casino-game-btn'),
@@ -111,6 +113,7 @@ const DOM = {
 
 // --- Game Config & State ---
 const nameSuggestions = {
+    SHOP: ['Quick Mart', 'The Corner Store', 'Value Emporium', 'Prime Goods'],
     TAXI: ['Apex Venture', 'MVGS Cabs', '13Taxis', 'Easy Lifts', 'EzyTaxi', 'TaxiMaxi'],
     REAL_ESTATE: ['Prestige Properties', 'Keystone Realty', 'Summit Estates', 'Bedrock Homes', 'Azure Assets'],
     LOGISTICS: ['Global Transit', 'Swift Haulage', 'Waypoint Cargo', 'Peak Logistics', 'Nexus Freight'],
@@ -130,6 +133,20 @@ const BANK_SETTINGS = {
 };
 
 const BUSINESS_TYPES = {
+    SHOP: {
+        id: 'SHOP',
+        name: 'Retail Shop',
+        unlockCost: 800,
+        levels: [
+            { level: 1, incomePerSecond: 2000 / 3600, upgradeCost: 10000 },
+            { level: 2, incomePerSecond: 5000 / 3600, upgradeCost: 18000 },
+            { level: 3, incomePerSecond: 12000 / 3600, upgradeCost: 40000 },
+            { level: 4, incomePerSecond: 25000 / 3600, upgradeCost: 85000 },
+            { level: 5, incomePerSecond: 50000 / 3600, upgradeCost: 150000 },
+            { level: 6, incomePerSecond: 90000 / 3600, upgradeCost: 300000 },
+            { level: 7, incomePerSecond: 180000 / 3600, upgradeCost: Infinity }, // Max level
+        ]
+    },
     TAXI: {
         id: 'TAXI', name: 'Taxi Company', unlockCost: 1500,
         assetTypes: [
@@ -316,6 +333,25 @@ function replaceAsset(businessId, assetId) {
     }
 }
 
+function upgradeShop(businessId) {
+    const business = gameState.businesses.find(b => b.id === businessId);
+    if (!business || business.type !== 'SHOP') return;
+    const businessTypeInfo = BUSINESS_TYPES.SHOP;
+    const currentLevelInfo = businessTypeInfo.levels[business.level - 1];
+    if (!currentLevelInfo || currentLevelInfo.upgradeCost === Infinity) {
+        showToast('Shop is already at max level!', 'info');
+        return;
+    }
+    if (gameState.balance >= currentLevelInfo.upgradeCost) {
+        gameState.balance -= currentLevelInfo.upgradeCost;
+        business.level++;
+        showToast(`Shop upgraded to Level ${business.level}!`, 'success');
+        renderBusinessDetails();
+    } else {
+        showToast('Not enough cash for the upgrade!', 'error');
+    }
+}
+
 function fluctuateStocks() {
     for (const ticker in marketData) {
         const stock = marketData[ticker];
@@ -356,12 +392,12 @@ function sellStock(ticker, amount) {
 
 function generateRouletteSequence() {
     const sequence = [];
-    for (let i = 0; i < 100; i++) {
-        const rand = Math.random();
-        if (rand < 0.05) sequence.push('green');
-        else if (rand < 0.525) sequence.push('red');
-        else sequence.push('black');
+    const pattern = ['red', 'black'];
+    for (let i = 0; i < 50; i++) {
+        sequence.push(pattern[i % 2]);
     }
+    const greenPosition = Math.floor(Math.random() * 30) + 10;
+    sequence.splice(greenPosition, 0, 'green');
     rouletteState.wheelSequence = sequence;
 }
 
@@ -589,24 +625,6 @@ function calculateSlotWinnings() {
     }
 }
 
-function depositSavings(amount) {
-    if (amount > 0 && gameState.balance >= amount) {
-        gameState.balance -= amount;
-        gameState.savingsBalance += amount;
-        showToast(`Deposited ${formatCurrency(amount)}`, 'success');
-        renderUI();
-    }
-}
-
-function withdrawSavings(amount) {
-    if (amount > 0 && gameState.savingsBalance >= amount) {
-        gameState.savingsBalance -= amount;
-        gameState.balance += amount;
-        showToast(`Withdrew ${formatCurrency(amount)}`, 'info');
-        renderUI();
-    }
-}
-
 function takeLoan(amount) {
     const creditLimit = getNetWorth() * BANK_SETTINGS.CREDIT_LIMIT_MULTIPLIER;
     if (amount > 0 && gameState.loan.principal === 0 && amount <= creditLimit) {
@@ -639,9 +657,10 @@ function repayLoan(amount) {
 function getNetWorth() {
     let assetValue = gameState.businesses.reduce((sum, biz) => {
         const businessTypeInfo = BUSINESS_TYPES[biz.type];
+        if (biz.type === 'SHOP') return sum; 
         return sum + biz.assets.reduce((assetSum, asset) => {
             const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-            return assetSum + assetType.cost;
+            return assetSum + (assetType ? assetType.cost : 0);
         }, 0);
     }, 0);
     let stockValue = Object.keys(gameState.portfolio).reduce((sum, ticker) => sum + (gameState.portfolio[ticker] || 0) * (marketData[ticker].price || 0), 0);
@@ -661,10 +680,9 @@ function prestige() {
     const netWorth = getNetWorth();
     if (netWorth >= PRESTIGE_REQUIREMENTS.NET_WORTH && gameState.hasYacht) {
         const legacyPointsEarned = 1;
-        gameState.legacyPoints += legacyPointsEarned;
         const oldStats = gameState.stats;
         gameState = JSON.parse(JSON.stringify(initialGameState));
-        gameState.legacyPoints = legacyPointsEarned;
+        gameState.legacyPoints += legacyPointsEarned;
         gameState.stats.totalEarnings = oldStats.totalEarnings;
         showToast(`Prestiged! You earned ${legacyPointsEarned} Legacy Point(s).`, "success");
         navigateTo('dashboard');
@@ -704,37 +722,46 @@ function renderDashboard() {
     gameState.businesses.forEach(biz => {
         const businessTypeInfo = BUSINESS_TYPES[biz.type];
         const multiplier = biz.boost ? biz.boost.multiplier : 1;
-        biz.assets.forEach(asset => {
-            const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-            if (biz.type === 'TAXI' || biz.type === 'LOGISTICS') {
-                if (asset.odometer < assetType.maxOdometer) {
-                    totalIncomePerHour += assetType.incomePerSecond * 3600 * multiplier;
+        if (biz.type === 'SHOP') {
+            const levelInfo = businessTypeInfo.levels[biz.level - 1];
+            totalIncomePerHour += levelInfo.incomePerSecond * 3600 * multiplier;
+        } else {
+            biz.assets.forEach(asset => {
+                const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
+                if (!assetType) return;
+                if (biz.type === 'TAXI' || biz.type === 'LOGISTICS') {
+                    if (asset.odometer < assetType.maxOdometer) {
+                        totalIncomePerHour += assetType.incomePerSecond * 3600 * multiplier;
+                    }
+                } else {
+                    totalIncomePerHour += (assetType.incomePerSecond || 0) * 3600 * multiplier;
+                    totalMaintenancePerHour += (assetType.maintenanceCostPerSecond || 0) * 3600;
                 }
-            } else {
-                totalIncomePerHour += (assetType.incomePerSecond || 0) * 3600 * multiplier;
-                totalMaintenancePerHour += (assetType.maintenanceCostPerSecond || 0) * 3600;
-            }
-        });
+            });
+        }
     });
     const netIncome = (totalIncomePerHour * prestigeMultiplier) - totalMaintenancePerHour;
     DOM.header.subHeaderText.innerHTML = `Net Income: <span class="${netIncome >= 0 ? 'text-green-500' : 'text-red-500'}">${formatCurrency(netIncome)}/hr</span>`;
     DOM.dashboard.tapPowerDisplay.textContent = `${formatCurrency(gameState.tapPower * prestigeMultiplier)}/tap`;
     DOM.dashboard.upgradeTapButton.textContent = `Upgrade Tap (${formatCurrency(gameState.tapUpgradeCost)})`;
     DOM.dashboard.upgradeTapButton.disabled = gameState.balance < gameState.tapUpgradeCost;
-    DOM.dashboard.upgradeTapButton.classList.toggle('opacity-50', gameState.balance < gameState.tapUpgradeCost);
+    DOM.dashboard.upgradeTapButton.classList.toggle('opacity-50', DOM.dashboard.upgradeTapButton.disabled);
+    
     Object.values(BUSINESS_TYPES).forEach(type => {
-        const btn = document.getElementById(`start-${type.id.toLowerCase().replace('_', '-')}-business`);
+        const btnId = `start-${type.id.toLowerCase().replace('_', '-')}-business`;
+        const btn = document.getElementById(btnId);
         if (!btn) return;
         const hasBusiness = gameState.businesses.some(b => b.type === type.id);
         btn.disabled = gameState.balance < type.unlockCost || hasBusiness;
         btn.classList.toggle('opacity-50', btn.disabled);
-        if (hasBusiness) {
+        const textNode = Array.from(btn.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0);
+        if(hasBusiness) {
             btn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> ${type.name} Founded`;
         } else {
-            const textNode = Array.from(btn.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
             if(textNode) textNode.textContent = ` Start ${type.name} (${formatCurrency(type.unlockCost, 0)})`;
         }
     });
+
     DOM.dashboard.businessesContainer.innerHTML = '';
     if (gameState.businesses.length === 0) {
         DOM.dashboard.businessesContainer.innerHTML = `<div class="text-center text-gray-400 py-10">You have no businesses. Start one below!</div>`;
@@ -743,25 +770,31 @@ function renderDashboard() {
             const card = document.createElement('div');
             card.className = 'bg-gray-700/50 p-4 rounded-xl shadow-lg hover:bg-gray-700 transition duration-200 cursor-pointer';
             card.onclick = () => navigateTo('businessDetails', { businessId: biz.id });
-            let income = 0;
-            let maintenance = 0;
+            let income = 0, maintenance = 0;
             const businessTypeInfo = BUSINESS_TYPES[biz.type];
-            biz.assets.forEach(asset => {
-                const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-                const multiplier = biz.boost ? biz.boost.multiplier : 1;
-                if (biz.type === 'TAXI' || biz.type === 'LOGISTICS') {
-                    if (asset.odometer < assetType.maxOdometer) income += assetType.incomePerSecond * 3600 * multiplier;
-                } else {
-                    income += (assetType.incomePerSecond || 0) * 3600 * multiplier;
-                    maintenance += (assetType.maintenanceCostPerSecond || 0) * 3600;
-                }
-            });
+            const multiplier = biz.boost ? biz.boost.multiplier : 1;
+            if (biz.type === 'SHOP') {
+                const levelInfo = businessTypeInfo.levels[biz.level - 1];
+                income = levelInfo.incomePerSecond * 3600 * multiplier;
+            } else {
+                biz.assets.forEach(asset => {
+                    const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
+                    if (!assetType) return;
+                    if (biz.type === 'TAXI' || biz.type === 'LOGISTICS') {
+                        if (asset.odometer < assetType.maxOdometer) income += assetType.incomePerSecond * 3600 * multiplier;
+                    } else {
+                        income += (assetType.incomePerSecond || 0) * 3600 * multiplier;
+                        maintenance += (assetType.maintenanceCostPerSecond || 0) * 3600;
+                    }
+                });
+            }
             const net = (income * prestigeMultiplier) - maintenance;
+            const assetCount = biz.type === 'SHOP' ? `Level ${biz.level}` : `${biz.assets.length} Asset(s)`;
             card.innerHTML = `
                 <div class="flex justify-between items-center">
                     <div>
                         <h3 class="text-lg font-bold text-yellow-300">${biz.customName}</h3>
-                        <p class="text-sm text-gray-300">${biz.assets.length} Asset(s)</p>
+                        <p class="text-sm text-gray-300">${assetCount}</p>
                     </div>
                     <div class="text-right">
                         <p class="font-bold ${net >= 0 ? 'text-green-400' : 'text-red-400'}">${formatCurrency(net)}/hr ${biz.boost ? '<span class="text-blue-400 animate-pulse">(BOOST!)</span>' : ''}</p>
@@ -778,61 +811,79 @@ function renderBusinessDetails() {
     if (!business) { navigateTo('dashboard'); return; }
     const businessTypeInfo = BUSINESS_TYPES[business.type];
     const prestigeMultiplier = 1 + (gameState.legacyPoints * 0.02);
-    let totalIncome = 0, totalMaintenance = 0;
-    business.assets.forEach(asset => {
-        const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-        const multiplier = business.boost ? business.boost.multiplier : 1;
-        if (business.type === 'TAXI' || business.type === 'LOGISTICS') {
-            if (asset.odometer < assetType.maxOdometer) totalIncome += assetType.incomePerSecond * 3600 * multiplier;
+    const multiplier = (business.boost ? business.boost.multiplier : 1);
+    let netIncome = 0;
+    DOM.businessDetails.assetsContainer.innerHTML = '';
+    if (business.type === 'SHOP') {
+        const levelInfo = businessTypeInfo.levels[business.level - 1];
+        netIncome = levelInfo.incomePerSecond * 3600 * multiplier * prestigeMultiplier;
+        const isMaxLevel = business.level >= businessTypeInfo.levels.length;
+        const upgradeCost = isMaxLevel ? 'MAX' : formatCurrency(levelInfo.upgradeCost);
+        DOM.businessDetails.assetsContainer.innerHTML = `
+            <div class="bg-gray-900 p-4 rounded-lg text-center">
+                <h3 class="text-2xl font-bold text-teal-300">Shop Level: ${business.level}</h3>
+                <p class="text-lg text-gray-400 mt-2">Current Income: <span class="font-bold text-green-400">${formatCurrency(netIncome)}/hr</span></p>
+            </div>`;
+        DOM.businessDetails.upgradeShopBtn.classList.remove('hidden');
+        DOM.businessDetails.openAssetStoreBtn.classList.add('hidden');
+        DOM.businessDetails.upgradeShopBtn.textContent = `Upgrade Shop (${upgradeCost})`;
+        DOM.businessDetails.upgradeShopBtn.disabled = isMaxLevel || gameState.balance < levelInfo.upgradeCost;
+        DOM.businessDetails.upgradeShopBtn.classList.toggle('opacity-50', DOM.businessDetails.upgradeShopBtn.disabled);
+    } else {
+        DOM.businessDetails.upgradeShopBtn.classList.add('hidden');
+        DOM.businessDetails.openAssetStoreBtn.classList.remove('hidden');
+        let totalIncome = 0;
+        let totalMaintenance = 0;
+        if (business.assets.length === 0) {
+            DOM.businessDetails.assetsContainer.innerHTML = `<div class="text-center text-gray-400 py-10">No assets yet. Buy one below to start earning!</div>`;
         } else {
-            totalIncome += (assetType.incomePerSecond || 0) * 3600 * multiplier;
-            totalMaintenance += (assetType.maintenanceCostPerSecond || 0) * 3600;
+            business.assets.forEach((asset, index) => {
+                const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
+                const assetCard = document.createElement('div');
+                assetCard.className = `bg-gray-900 p-3 rounded-lg flex items-center justify-between`;
+                let assetHtml;
+                if (business.type === 'TAXI' || business.type === 'LOGISTICS') {
+                    if (asset.odometer < assetType.maxOdometer) totalIncome += assetType.incomePerSecond * 3600;
+                } else {
+                    totalIncome += (assetType.incomePerSecond || 0) * 3600;
+                    totalMaintenance += (assetType.maintenanceCostPerSecond || 0) * 3600;
+                }
+                if (business.type === 'TAXI' || business.type === 'LOGISTICS') {
+                    const isBroken = asset.odometer >= assetType.maxOdometer;
+                    const odometerPercentage = Math.min(100, (asset.odometer / assetType.maxOdometer) * 100);
+                    assetCard.classList.toggle('opacity-60', isBroken);
+                    assetHtml = `
+                        <img src="${assetType.imageUrl}" alt="${assetType.name}" class="w-16 h-12 object-cover rounded-md bg-gray-700 mr-3">
+                        <div class="flex-grow">
+                            <p class="font-semibold">${assetType.name} #${index + 1}</p>
+                            <div class="w-full bg-gray-600 rounded-full h-2.5 mt-1">
+                                <div class="progress-bar-inner ${isBroken ? 'bg-red-600' : 'bg-yellow-400'} h-2.5 rounded-full" style="width: ${odometerPercentage}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">${formatNumber(Math.floor(asset.odometer))} / ${formatNumber(assetType.maxOdometer)} km</p>
+                        </div>
+                        <div class="text-right ml-3 w-28">
+                        ${isBroken ? `<button onclick="replaceAsset(${business.id}, ${asset.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 text-sm rounded-lg ${gameState.balance < assetType.cost ? 'opacity-50' : ''}" ${gameState.balance < assetType.cost ? 'disabled' : ''}>Replace<br>(${formatCurrency(assetType.cost, 0)})</button>`
+                        : `<p class="font-bold text-green-400">+${formatCurrency(assetType.incomePerSecond*3600*multiplier*prestigeMultiplier)}/hr</p>`}
+                        </div>`;
+                } else {
+                    assetHtml = `
+                        <img src="${assetType.imageUrl}" alt="${assetType.name}" class="w-16 h-12 object-cover rounded-md bg-gray-700 mr-3">
+                        <div class="flex-grow">
+                            <p class="font-semibold">${assetType.name} #${index + 1}</p>
+                            <p class="text-sm text-green-400">Income: ${formatCurrency(assetType.incomePerSecond * 3600 * multiplier * prestigeMultiplier)}/hr</p>
+                            ${assetType.maintenanceCostPerSecond ? `<p class="text-sm text-red-400">Maint: ${formatCurrency(assetType.maintenanceCostPerSecond * 3600)}/hr</p>` : ''}
+                        </div>
+                        <div class="text-right ml-3 w-28"><p class="font-bold text-yellow-400">Net<br>${formatCurrency((assetType.incomePerSecond * multiplier * prestigeMultiplier - (assetType.maintenanceCostPerSecond || 0)) * 3600)}/hr</p></div>`;
+                }
+                assetCard.innerHTML = assetHtml;
+                DOM.businessDetails.assetsContainer.appendChild(assetCard);
+            });
         }
-    });
-    const netIncome = (totalIncome * prestigeMultiplier) - totalMaintenance;
+        netIncome = ((totalIncome * multiplier) * prestigeMultiplier) - totalMaintenance;
+    }
     DOM.businessDetails.name.textContent = business.customName;
     DOM.businessDetails.income.textContent = formatCurrency(netIncome);
     DOM.businessDetails.boostIndicator.textContent = business.boost ? `(BOOST! ${business.boost.timeLeft}s)` : '';
-    DOM.businessDetails.assetsContainer.innerHTML = '';
-    if (business.assets.length === 0) {
-        DOM.businessDetails.assetsContainer.innerHTML = `<div class="text-center text-gray-400 py-10">No assets yet. Buy one below to start earning!</div>`;
-    } else {
-        business.assets.forEach((asset, index) => {
-            const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-            const assetCard = document.createElement('div');
-            assetCard.className = `bg-gray-900 p-3 rounded-lg flex items-center justify-between`;
-            let assetHtml;
-            if (business.type === 'TAXI' || business.type === 'LOGISTICS') {
-                const isBroken = asset.odometer >= assetType.maxOdometer;
-                const odometerPercentage = Math.min(100, (asset.odometer / assetType.maxOdometer) * 100);
-                assetCard.classList.toggle('opacity-60', isBroken);
-                assetHtml = `
-                    <img src="${assetType.imageUrl}" alt="${assetType.name}" class="w-16 h-12 object-cover rounded-md bg-gray-700 mr-3">
-                    <div class="flex-grow">
-                        <p class="font-semibold">${assetType.name} #${index + 1}</p>
-                        <div class="w-full bg-gray-600 rounded-full h-2.5 mt-1">
-                            <div class="progress-bar-inner ${isBroken ? 'bg-red-600' : 'bg-yellow-400'} h-2.5 rounded-full" style="width: ${odometerPercentage}%"></div>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">${formatNumber(Math.floor(asset.odometer))} / ${formatNumber(assetType.maxOdometer)} km</p>
-                    </div>
-                    <div class="text-right ml-3 w-28">
-                    ${isBroken ? `<button onclick="replaceAsset(${business.id}, ${asset.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 text-sm rounded-lg transition duration-200 ${gameState.balance < assetType.cost ? 'opacity-50' : ''}" ${gameState.balance < assetType.cost ? 'disabled' : ''}>Replace<br>(${formatCurrency(assetType.cost, 0)})</button>`
-                    : `<p class="font-bold text-green-400">+${formatCurrency(assetType.incomePerSecond*3600*(business.boost ? business.boost.multiplier : 1)*prestigeMultiplier)}/hr</p>`}
-                    </div>`;
-            } else {
-                assetHtml = `
-                    <img src="${assetType.imageUrl}" alt="${assetType.name}" class="w-16 h-12 object-cover rounded-md bg-gray-700 mr-3">
-                    <div class="flex-grow">
-                        <p class="font-semibold">${assetType.name} #${index + 1}</p>
-                        <p class="text-sm text-green-400">Income: ${formatCurrency(assetType.incomePerSecond * 3600 * (business.boost ? business.boost.multiplier : 1) * prestigeMultiplier)}/hr</p>
-                        ${assetType.maintenanceCostPerSecond ? `<p class="text-sm text-red-400">Maint: ${formatCurrency(assetType.maintenanceCostPerSecond * 3600)}/hr</p>` : ''}
-                    </div>
-                    <div class="text-right ml-3 w-28"><p class="font-bold text-yellow-400">Net<br>${formatCurrency((assetType.incomePerSecond * (business.boost ? business.boost.multiplier : 1) * prestigeMultiplier - (assetType.maintenanceCostPerSecond || 0)) * 3600)}/hr</p></div>`;
-            }
-            assetCard.innerHTML = assetHtml;
-            DOM.businessDetails.assetsContainer.appendChild(assetCard);
-        });
-    }
 }
 
 function renderMarket() {
@@ -872,7 +923,7 @@ function renderMarket() {
 
 function openAssetStoreModal() {
     const business = gameState.businesses.find(b => b.id === gameState.currentBusinessView);
-    if (!business) return;
+    if (!business || business.type === 'SHOP') return;
     const businessTypeInfo = BUSINESS_TYPES[business.type];
     DOM.modals.assetStoreList.innerHTML = '';
     businessTypeInfo.assetTypes.forEach(assetType => {
@@ -980,33 +1031,43 @@ function renderProfile() {
     DOM.profile.timePlayed.textContent = `${hours}h ${minutes}m ${time % 60}s`;
 }
 
-// --- Game Loop & Save/Load ---
 function gameLoop() {
     let totalIncomePerSecond = 0;
     let totalMaintenancePerSecond = 0;
     const prestigeMultiplier = 1 + (gameState.legacyPoints * 0.02);
+
     gameState.businesses.forEach(business => {
         const businessTypeInfo = BUSINESS_TYPES[business.type];
         let incomeMultiplier = (business.boost && business.boost.timeLeft > 0) ? business.boost.multiplier : 1;
         if (business.boost && business.boost.timeLeft > 0) business.boost.timeLeft--;
         else if (business.boost) business.boost = null;
-        business.assets.forEach(asset => {
-            const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
-            if (business.type === 'TAXI' || business.type === 'LOGISTICS') {
-                if (asset.odometer < assetType.maxOdometer) {
-                    asset.odometer += assetType.mileagePerSecond;
-                    totalIncomePerSecond += assetType.incomePerSecond * incomeMultiplier;
-                } else {
-                    asset.odometer = assetType.maxOdometer;
+
+        if (business.type === 'SHOP') {
+            const levelInfo = businessTypeInfo.levels[business.level - 1];
+            totalIncomePerSecond += levelInfo.incomePerSecond * incomeMultiplier;
+        } else {
+            business.assets.forEach(asset => {
+                const assetType = businessTypeInfo.assetTypes.find(at => at.id === asset.assetTypeId);
+                if (!assetType) return;
+                switch (business.type) {
+                    case 'TAXI':
+                    case 'LOGISTICS':
+                        if (asset.odometer < assetType.maxOdometer) {
+                            asset.odometer += assetType.mileagePerSecond;
+                            totalIncomePerSecond += assetType.incomePerSecond * incomeMultiplier;
+                        } else {
+                            asset.odometer = assetType.maxOdometer;
+                        }
+                        break;
+                    default:
+                        totalIncomePerSecond += (assetType.incomePerSecond || 0) * incomeMultiplier;
+                        totalMaintenancePerSecond += (assetType.maintenanceCostPerSecond || 0);
+                        break;
                 }
-            } else {
-                totalIncomePerSecond += (assetType.incomePerSecond || 0) * incomeMultiplier;
-                totalMaintenancePerSecond += (assetType.maintenanceCostPerSecond || 0);
-            }
-        });
+            });
+        }
     });
 
-    // Interest logic is removed. We only track time played.
     gameState.stats.timePlayed++;
 
     const incomeThisTick = (totalIncomePerSecond * prestigeMultiplier);
@@ -1024,9 +1085,7 @@ function gameLoop() {
 function saveGame() {
     try {
         localStorage.setItem('tycoonClickerSave_v12', JSON.stringify(gameState));
-    } catch (e) {
-        console.error("Failed to save game:", e);
-    }
+    } catch (e) { console.error("Failed to save game:", e); }
 }
 
 function loadGame() {
@@ -1035,7 +1094,6 @@ function loadGame() {
         try {
             const loaded = JSON.parse(savedGame);
             const mergedStats = { ...initialGameState.stats, ...loaded.stats };
-            // Make sure savingsBalance from old saves doesn't carry over if you want it gone
             delete loaded.savingsBalance; 
             gameState = { ...initialGameState, ...loaded, stats: mergedStats };
         } catch(e) {
@@ -1050,29 +1108,39 @@ function init() {
     DOM.businessDetails.backButton.addEventListener('click', () => navigateTo('dashboard'));
     DOM.businessDetails.openAssetStoreBtn.addEventListener('click', openAssetStoreModal);
     DOM.modals.closeAssetStore.addEventListener('click', () => DOM.modals.assetStore.classList.add('hidden'));
+    
     DOM.modals.confirmBusinessName.addEventListener('click', () => {
         if (!businessToStart.type) return;
         const typeInfo = BUSINESS_TYPES[businessToStart.type];
         const businessName = DOM.modals.businessNameInput.value.trim() || `My ${typeInfo.name}`;
         gameState.balance -= typeInfo.unlockCost;
-        gameState.businesses.push({ id: Date.now(), type: businessToStart.type, customName: businessName, assets: [], boost: null });
+        const newBusiness = { id: Date.now(), type: businessToStart.type, customName: businessName, assets: [], boost: null };
+        if (businessToStart.type === 'SHOP') {
+            newBusiness.level = 1;
+        }
+        gameState.businesses.push(newBusiness);
         DOM.modals.businessName.classList.add('hidden');
         businessToStart.type = null;
         renderUI();
     });
+
     DOM.modals.cancelBusinessName.addEventListener('click', () => {
         DOM.modals.businessName.classList.add('hidden');
         businessToStart.type = null;
     });
+
     if (DOM.modals.suggestNameButton) {
         DOM.modals.suggestNameButton.addEventListener('click', suggestBusinessName);
     }
+    
     DOM.dashboard.tapButton.addEventListener('click', handleTap);
     DOM.dashboard.upgradeTapButton.addEventListener('click', upgradeTap);
+    DOM.dashboard.startShopButton.addEventListener('click', () => startBusiness('SHOP'));
     DOM.dashboard.startTaxiBusinessButton.addEventListener('click', () => startBusiness('TAXI'));
     DOM.dashboard.startRealEstateButton.addEventListener('click', () => startBusiness('REAL_ESTATE'));
     DOM.dashboard.startLogisticsButton.addEventListener('click', () => startBusiness('LOGISTICS'));
     DOM.dashboard.startTechStartupButton.addEventListener('click', () => startBusiness('TECH_STARTUP'));
+    DOM.businessDetails.upgradeShopBtn.addEventListener('click', () => upgradeShop(gameState.currentBusinessView));
     
     document.querySelectorAll('.casino-game-btn').forEach(btn => btn.addEventListener('click', () => navigateTo(btn.dataset.page)));
     document.querySelectorAll('.casino-back-btn').forEach(btn => btn.addEventListener('click', () => navigateTo('casino-hub')));
@@ -1086,8 +1154,6 @@ function init() {
     DOM.casinoSlots.spinBtn.addEventListener('click', startSlots);
     DOM.prestige.buyYachtBtn.addEventListener('click', buyYacht);
     DOM.prestige.prestigeBtn.addEventListener('click', prestige);
-    
-    // REMOVED Savings button listeners
     
     DOM.bank.takeLoanBtn.addEventListener('click', () => takeLoan(Number(DOM.bank.loanAmountInput.value)));
     DOM.bank.repayBtn.addEventListener('click', () => repayLoan(Number(DOM.bank.repayInput.value)));
